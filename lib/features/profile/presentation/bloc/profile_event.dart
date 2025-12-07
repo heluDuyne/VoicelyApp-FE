@@ -38,3 +38,4 @@ class LogoutRequested extends ProfileEvent {
 
 
 
+

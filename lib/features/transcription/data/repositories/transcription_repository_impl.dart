@@ -3,8 +3,10 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/network/network_info.dart';
 import '../../domain/repositories/transcription_repository.dart';
+import '../../domain/entities/transcription_request.dart';
+import '../../domain/entities/transcription_response.dart';
+import '../../domain/entities/audio_upload_response.dart';
 import '../datasources/transcription_remote_data_source.dart';
-import '../models/audio_upload_response.dart';
 import '../models/transcription_models.dart';
 import '../../../auth/data/datasources/auth_local_data_source.dart';
 
@@ -29,8 +31,9 @@ class TranscriptionRepositoryImpl implements TranscriptionRepository {
 
     if (await networkInfo.isConnected) {
       try {
-        final response = await remoteDataSource.uploadAudio(audioFile);
-        return Right(response);
+        final responseModel = await remoteDataSource.uploadAudio(audioFile);
+        // Convert model to entity
+        return Right(responseModel);
       } catch (e) {
         return Left(ServerFailure(e.toString()));
       }
@@ -50,8 +53,11 @@ class TranscriptionRepositoryImpl implements TranscriptionRepository {
 
     if (await networkInfo.isConnected) {
       try {
-        final response = await remoteDataSource.transcribeAudio(request);
-        return Right(response);
+        // Convert entity to model for data source
+        final requestModel = TranscriptionRequestModel.fromEntity(request);
+        final responseModel = await remoteDataSource.transcribeAudio(requestModel);
+        // Convert model to entity
+        return Right(responseModel);
       } catch (e) {
         return Left(ServerFailure(e.toString()));
       }

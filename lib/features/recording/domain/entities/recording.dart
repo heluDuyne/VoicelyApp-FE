@@ -1,45 +1,90 @@
 import 'package:equatable/equatable.dart';
 
-enum RecordingStatus { idle, recording, paused, completed }
+// Local recording session states (for UI/recording session management)
+enum LocalRecordingState { idle, recording, paused, completed }
+
+enum RecordingStatus {
+  uploading('UPLOADING'),
+  processed('PROCESSED'),
+  error('ERROR');
+
+  final String value;
+  const RecordingStatus(this.value);
+
+  static RecordingStatus fromString(String value) {
+    return RecordingStatus.values.firstWhere(
+      (status) => status.value == value.toUpperCase(),
+      orElse: () => RecordingStatus.uploading,
+    );
+  }
+}
 
 class Recording extends Equatable {
-  final String? id;
-  final String? filePath;
-  final String? fileName;
-  final Duration duration;
-  final DateTime? createdAt;
-  final RecordingStatus status;
+  final String recordingId; // uuid recording_id PK
+  final String userId; // uuid user_id FK
+  final String? folderId; // uuid folder_id FK
+  final String title;
+  final String filePath; // Đường dẫn file trên Cloud/Local
+  final double durationSeconds;
+  final double fileSizeMb;
+  final RecordingStatus status; // Enum: UPLOADING, PROCESSED, ERROR
+  final DateTime createdAt;
+  final DateTime? deletedAt; // Hỗ trợ Soft Delete (Thùng rác)
 
   const Recording({
-    this.id,
-    this.filePath,
-    this.fileName,
-    this.duration = Duration.zero,
-    this.createdAt,
-    this.status = RecordingStatus.idle,
+    required this.recordingId,
+    required this.userId,
+    this.folderId,
+    required this.title,
+    required this.filePath,
+    required this.durationSeconds,
+    required this.fileSizeMb,
+    required this.status,
+    required this.createdAt,
+    this.deletedAt,
   });
 
   Recording copyWith({
-    String? id,
+    String? recordingId,
+    String? userId,
+    String? folderId,
+    String? title,
     String? filePath,
-    String? fileName,
-    Duration? duration,
-    DateTime? createdAt,
+    double? durationSeconds,
+    double? fileSizeMb,
     RecordingStatus? status,
+    DateTime? createdAt,
+    DateTime? deletedAt,
   }) {
     return Recording(
-      id: id ?? this.id,
+      recordingId: recordingId ?? this.recordingId,
+      userId: userId ?? this.userId,
+      folderId: folderId ?? this.folderId,
+      title: title ?? this.title,
       filePath: filePath ?? this.filePath,
-      fileName: fileName ?? this.fileName,
-      duration: duration ?? this.duration,
-      createdAt: createdAt ?? this.createdAt,
+      durationSeconds: durationSeconds ?? this.durationSeconds,
+      fileSizeMb: fileSizeMb ?? this.fileSizeMb,
       status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 
   @override
-  List<Object?> get props => [id, filePath, fileName, duration, createdAt, status];
+  List<Object?> get props => [
+    recordingId,
+    userId,
+    folderId,
+    title,
+    filePath,
+    durationSeconds,
+    fileSizeMb,
+    status,
+    createdAt,
+    deletedAt,
+  ];
 }
+
 
 
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/routes/app_router.dart';
+import '../../domain/entities/folder.dart';
 import '../widgets/folder_card.dart';
 import '../widgets/transcript_card.dart';
 
@@ -15,10 +16,29 @@ class _TranscriptListScreenState extends State<TranscriptListScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   // Mock data for folders
-  final List<Map<String, dynamic>> _folders = [
-    {'name': 'Project Meetings', 'fileCount': 12, 'icon': Icons.folder},
-    {'name': 'User Research', 'fileCount': 8, 'icon': Icons.folder},
-    {'name': 'Personal Notes', 'fileCount': 5, 'icon': Icons.folder},
+  // TODO: Replace with actual data from repository/use case
+  final List<Folder> _folders = [
+    Folder(
+      folderId: 'folder_001',
+      userId: 'user_001',
+      name: 'Project Meetings',
+      parentFolderId: null,
+      createdAt: DateTime.now().subtract(const Duration(days: 30)),
+    ),
+    Folder(
+      folderId: 'folder_002',
+      userId: 'user_001',
+      name: 'User Research',
+      parentFolderId: null,
+      createdAt: DateTime.now().subtract(const Duration(days: 20)),
+    ),
+    Folder(
+      folderId: 'folder_003',
+      userId: 'user_001',
+      name: 'Personal Notes',
+      parentFolderId: null,
+      createdAt: DateTime.now().subtract(const Duration(days: 10)),
+    ),
   ];
 
   // Mock data for recent transcripts
@@ -58,11 +78,11 @@ class _TranscriptListScreenState extends State<TranscriptListScreen> {
     context.push(AppRoutes.addFolder);
   }
 
-  void _onFolderTapped(Map<String, dynamic> folder) {
+  void _onFolderTapped(Folder folder) {
     // TODO: Navigate to folder contents
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('Open folder: ${folder['name']}')));
+    ).showSnackBar(SnackBar(content: Text('Open folder: ${folder.name}')));
   }
 
   void _onTranscriptTapped(Map<String, dynamic> transcript) {
@@ -247,10 +267,13 @@ class _TranscriptListScreenState extends State<TranscriptListScreen> {
     );
   }
 
-  Widget _buildFolderCard(Map<String, dynamic> folder) {
+  Widget _buildFolderCard(Folder folder) {
+    // TODO: Get actual file count from repository/use case
+    // For now, using 0 as placeholder since fileCount is not part of Folder entity
     return FolderCard(
-      name: folder['name'],
-      fileCount: folder['fileCount'],
+      name: folder.name,
+      fileCount:
+          0, // This should come from a separate query or be added to Folder entity
       onTap: () => _onFolderTapped(folder),
     );
   }

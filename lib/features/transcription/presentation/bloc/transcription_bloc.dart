@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/upload_audio.dart';
 import '../../domain/usecases/transcribe_audio.dart';
-import '../../data/models/transcription_models.dart';
+import '../../domain/entities/transcription_request.dart';
 import 'transcription_event.dart';
 import 'transcription_state.dart';
 

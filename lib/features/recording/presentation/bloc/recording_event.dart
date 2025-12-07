@@ -40,3 +40,4 @@ class DurationUpdated extends RecordingEvent {
 
 
 
+

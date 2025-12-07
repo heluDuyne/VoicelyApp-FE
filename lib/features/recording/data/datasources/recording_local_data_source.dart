@@ -13,14 +13,14 @@ abstract class RecordingLocalDataSource {
   Future<void> pauseRecording();
   Future<void> resumeRecording();
   Future<File> importAudioFile();
-  RecordingStatus getRecordingStatus();
+  LocalRecordingState getRecordingStatus();
   Stream<Duration> get durationStream;
   void dispose();
 }
 
 class RecordingLocalDataSourceImpl implements RecordingLocalDataSource {
   final AudioRecorder _recorder;
-  RecordingStatus _status = RecordingStatus.idle;
+  LocalRecordingState _status = LocalRecordingState.idle;
   Timer? _durationTimer;
   Duration _currentDuration = Duration.zero;
   final StreamController<Duration> _durationController =
@@ -34,7 +34,7 @@ class RecordingLocalDataSourceImpl implements RecordingLocalDataSource {
   Stream<Duration> get durationStream => _durationController.stream;
 
   @override
-  RecordingStatus getRecordingStatus() => _status;
+  LocalRecordingState getRecordingStatus() => _status;
 
   @override
   Future<void> startRecording() async {
@@ -54,7 +54,7 @@ class RecordingLocalDataSourceImpl implements RecordingLocalDataSource {
         );
 
         await _recorder.start(config, path: _currentFilePath!);
-        _status = RecordingStatus.recording;
+        _status = LocalRecordingState.recording;
         _currentDuration = Duration.zero;
 
         // Start duration timer
@@ -75,15 +75,25 @@ class RecordingLocalDataSourceImpl implements RecordingLocalDataSource {
     try {
       final path = await _recorder.stop();
       _durationTimer?.cancel();
-      _status = RecordingStatus.completed;
+      _status = LocalRecordingState.completed;
+
+      final file = File(path ?? _currentFilePath ?? '');
+      final fileSizeBytes = await file.length();
+      final fileSizeMb = fileSizeBytes / (1024 * 1024);
+      final fileName = path?.split('/').last ?? 'recording.m4a';
+      final title = fileName.replaceAll('.m4a', '').replaceAll('.mp3', '').replaceAll('_', ' ');
 
       final recording = RecordingModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        filePath: path ?? _currentFilePath,
-        fileName: path?.split('/').last ?? 'recording.m4a',
-        duration: _currentDuration,
+        recordingId: DateTime.now().millisecondsSinceEpoch.toString(),
+        userId: 'user_001', // TODO: Get from current user
+        folderId: null, // TODO: Get from selected folder
+        title: title,
+        filePath: path ?? _currentFilePath ?? '',
+        durationSeconds: _currentDuration.inSeconds.toDouble(),
+        fileSizeMb: fileSizeMb,
+        status: RecordingStatus.uploading, // New recording needs to be uploaded
         createdAt: DateTime.now(),
-        status: RecordingStatus.completed,
+        deletedAt: null,
       );
 
       _currentDuration = Duration.zero;
@@ -100,7 +110,7 @@ class RecordingLocalDataSourceImpl implements RecordingLocalDataSource {
     try {
       await _recorder.pause();
       _durationTimer?.cancel();
-      _status = RecordingStatus.paused;
+      _status = LocalRecordingState.paused;
     } catch (e) {
       throw ServerException('Failed to pause recording: $e');
     }
@@ -110,7 +120,7 @@ class RecordingLocalDataSourceImpl implements RecordingLocalDataSource {
   Future<void> resumeRecording() async {
     try {
       await _recorder.resume();
-      _status = RecordingStatus.recording;
+      _status = LocalRecordingState.recording;
 
       // Resume duration timer
       _durationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -148,6 +158,7 @@ class RecordingLocalDataSourceImpl implements RecordingLocalDataSource {
     _recorder.dispose();
   }
 }
+
 
 
 

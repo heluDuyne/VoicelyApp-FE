@@ -61,10 +61,8 @@ class SummaryRepositoryImpl implements SummaryRepository {
       try {
         final summaryModel = SummaryModel.fromEntity(summary);
         final savedSummary = await remoteDataSource.saveSummary(summaryModel);
-        // Update cache if we have a transcription ID
-        if (summary.id != null) {
-          await localDataSource.cacheSummary(summary.id!, savedSummary);
-        }
+        // Update cache using summaryId
+        await localDataSource.cacheSummary(summary.summaryId, savedSummary);
         return Right(savedSummary);
       } catch (e) {
         return Left(ServerFailure(e.toString()));

@@ -82,7 +82,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       final response = await dio.post(
         '/auth/register', // Updated endpoint to match AppConstants
-        data: {'name': name, 'email': email, 'password': password},
+        data: {'full_name': name, 'email': email, 'password': password},
       );
 
       if (response.statusCode == 201) {
@@ -143,9 +143,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     if (_enableDemoAccount && accessToken.startsWith('demo_access_token_')) {
       log('Returning demo user data');
       return {
-        'id': 'demo_user_001',
-        'name': 'Demo User',
+        'user_id': 'demo_user_001',
         'email': _demoEmail,
+        'full_name': 'Demo User',
+        'tier_id': 1,
+        'role': 'USER',
+        'is_active': true,
+        'storage_used_mb': 0.0,
         'created_at': DateTime.now().toIso8601String(),
       };
     }

@@ -19,12 +19,13 @@ abstract class RecordingRepository {
   /// Import an audio file from device storage
   Future<Either<Failure, File>> importAudioFile();
 
-  /// Get the current recording status
-  RecordingStatus getRecordingStatus();
+  /// Get the current local recording session status
+  LocalRecordingState getRecordingStatus();
 
   /// Get the current recording duration stream
   Stream<Duration> get durationStream;
 }
+
 
 
 

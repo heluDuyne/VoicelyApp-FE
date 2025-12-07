@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
-import '../../data/models/audio_upload_response.dart';
-import '../../data/models/transcription_models.dart';
+import '../../domain/entities/audio_upload_response.dart';
+import '../../domain/entities/transcription_response.dart';
 
 abstract class TranscriptionState extends Equatable {
   const TranscriptionState();

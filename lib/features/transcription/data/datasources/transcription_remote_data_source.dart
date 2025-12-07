@@ -4,8 +4,8 @@ import '../models/audio_upload_response.dart';
 import '../models/transcription_models.dart';
 
 abstract class TranscriptionRemoteDataSource {
-  Future<AudioUploadResponse> uploadAudio(File audioFile);
-  Future<TranscriptionResponse> transcribeAudio(TranscriptionRequest request);
+  Future<AudioUploadResponseModel> uploadAudio(File audioFile);
+  Future<TranscriptionResponseModel> transcribeAudio(TranscriptionRequestModel request);
 }
 
 class TranscriptionRemoteDataSourceImpl implements TranscriptionRemoteDataSource {
@@ -14,7 +14,7 @@ class TranscriptionRemoteDataSourceImpl implements TranscriptionRemoteDataSource
   TranscriptionRemoteDataSourceImpl({required this.dio});
 
   @override
-  Future<AudioUploadResponse> uploadAudio(File audioFile) async {
+  Future<AudioUploadResponseModel> uploadAudio(File audioFile) async {
     try {
       // Create FormData for multipart upload
       FormData formData = FormData.fromMap({
@@ -35,7 +35,7 @@ class TranscriptionRemoteDataSourceImpl implements TranscriptionRemoteDataSource
       );
 
       if (response.statusCode == 200) {
-        return AudioUploadResponse.fromJson(response.data);
+        return AudioUploadResponseModel.fromJson(response.data);
       } else {
         throw Exception('Failed to upload audio file');
       }
@@ -45,7 +45,7 @@ class TranscriptionRemoteDataSourceImpl implements TranscriptionRemoteDataSource
   }
 
   @override
-  Future<TranscriptionResponse> transcribeAudio(TranscriptionRequest request) async {
+  Future<TranscriptionResponseModel> transcribeAudio(TranscriptionRequestModel request) async {
     try {
       final response = await dio.post(
         '/transcript/transcribe',
@@ -58,7 +58,7 @@ class TranscriptionRemoteDataSourceImpl implements TranscriptionRemoteDataSource
       );
 
       if (response.statusCode == 200) {
-        return TranscriptionResponse.fromJson(response.data);
+        return TranscriptionResponseModel.fromJson(response.data);
       } else {
         throw Exception('Failed to transcribe audio');
       }

@@ -201,21 +201,53 @@ class _TranscriptionPageState extends State<TranscriptionPage> {
     return Container(
       height: 40,
       margin: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: List.generate(50, (index) {
-          final isActive = index < 20; // Mock active waveform
-          return Container(
-            width: 3,
-            height: isActive ? 20 + (index % 5) * 4.0 : 8.0,
-            margin: const EdgeInsets.symmetric(horizontal: 1.5),
-            decoration: BoxDecoration(
-              color: isActive ? const Color(0xFF3B82F6) : Colors.grey[700],
-              borderRadius: BorderRadius.circular(1.5),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Calculate available width for the Row
+          final availableWidth = constraints.maxWidth;
+
+          // Each bar: 3px width + 3px margin (1.5px on each side) = 6px per bar
+          const barWidth = 3.0;
+          const barMargin = 3.0; // 1.5px on each side
+          const barSpacing = barWidth + barMargin;
+
+          // Calculate how many bars can fit, ensuring at least 1
+          // Use a conservative calculation to prevent overflow
+          final maxBars =
+              availableWidth > barSpacing
+                  ? (availableWidth / barSpacing).floor()
+                  : 1;
+          final numBars = maxBars > 0 ? maxBars : 1;
+
+          return SizedBox(
+            width: availableWidth,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(numBars, (index) {
+                  final isActive =
+                      index <
+                      (numBars * 0.4)
+                          .round(); // Mock active waveform (40% of bars)
+                  return Container(
+                    width: barWidth,
+                    height: isActive ? 20 + (index % 5) * 4.0 : 8.0,
+                    margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                    decoration: BoxDecoration(
+                      color:
+                          isActive ? const Color(0xFF3B82F6) : Colors.grey[700],
+                      borderRadius: BorderRadius.circular(1.5),
+                    ),
+                  );
+                }),
+              ),
             ),
           );
-        }),
+        },
       ),
     );
   }

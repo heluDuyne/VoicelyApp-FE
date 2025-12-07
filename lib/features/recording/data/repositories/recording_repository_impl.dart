@@ -72,15 +72,10 @@ class RecordingRepositoryImpl implements RecordingRepository {
   }
 
   @override
-  RecordingStatus getRecordingStatus() {
+  LocalRecordingState getRecordingStatus() {
     return localDataSource.getRecordingStatus();
   }
 
   @override
   Stream<Duration> get durationStream => localDataSource.durationStream;
 }
-
-
-
-
-

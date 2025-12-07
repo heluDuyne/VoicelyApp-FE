@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../data/models/transcription_models.dart';
+import '../../domain/entities/transcription_response.dart';
+import '../../domain/entities/transcription_segment_response.dart';
+import '../../domain/entities/transcription_word.dart';
 
 class TranscriptionResultPage extends StatelessWidget {
   final TranscriptionResponse transcriptionResponse;
@@ -142,7 +144,7 @@ class TranscriptionResultPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSegmentCard(BuildContext context, int index, TranscriptionSegment segment) {
+  Widget _buildSegmentCard(BuildContext context, int index, TranscriptionSegmentResponse segment) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8.0),
       elevation: 1,

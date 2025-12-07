@@ -20,12 +20,12 @@ class RecordingPage extends StatelessWidget {
         } else if (state is RecordingCompleted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Recording saved: ${state.recording.fileName}'),
+              content: Text('Recording saved: ${state.recording.title}'),
             ),
           );
           // Navigate to transcription page
           context.push(
-            '${AppRoutes.transcription}?title=${Uri.encodeComponent(state.recording.fileName ?? 'Meeting Recording')}',
+            '${AppRoutes.transcription}?title=${Uri.encodeComponent(state.recording.title)}',
           );
         } else if (state is AudioImported) {
           ScaffoldMessenger.of(context).showSnackBar(

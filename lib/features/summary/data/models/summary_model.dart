@@ -1,69 +1,68 @@
+import 'dart:convert';
 import '../../domain/entities/summary.dart';
-import 'action_item_model.dart';
 
 class SummaryModel extends Summary {
   const SummaryModel({
-    super.id,
-    super.meetingTitle,
-    required super.executiveSummary,
-    required super.keyTakeaways,
-    required super.actionItems,
-    required super.tags,
-    super.createdAt,
-    super.updatedAt,
-  });
+    required String summaryId,
+    required String recordingId,
+    required SummaryType type,
+    required ContentStructure contentStructure,
+    required DateTime createdAt,
+  }) : super(
+         summaryId: summaryId,
+         recordingId: recordingId,
+         type: type,
+         contentStructure: contentStructure,
+         createdAt: createdAt,
+       );
 
   factory SummaryModel.fromJson(Map<String, dynamic> json) {
+    // Parse content_structure - can be a JSON string or Map
+    ContentStructure contentStructure;
+    if (json['content_structure'] is String) {
+      // If it's a JSON string, parse it
+      final contentJson = jsonDecode(json['content_structure'] as String)
+          as Map<String, dynamic>;
+      contentStructure = ContentStructure.fromJson(contentJson);
+    } else if (json['content_structure'] is Map) {
+      // If it's already a Map, use it directly
+      contentStructure =
+          ContentStructure.fromJson(json['content_structure'] as Map<String, dynamic>);
+    } else {
+      // Fallback to empty structure
+      contentStructure = const ContentStructure(
+        overview: '',
+        keyPoints: [],
+        actionItems: [],
+      );
+    }
+
     return SummaryModel(
-      id: json['id']?.toString(),
-      meetingTitle: json['meeting_title'] as String?,
-      executiveSummary: json['executive_summary'] as String? ?? '',
-      keyTakeaways: (json['key_takeaways'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          [],
-      actionItems: (json['action_items'] as List<dynamic>?)
-              ?.map((e) => ActionItemModel.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      tags: (json['tags'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          [],
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
-          : null,
+      summaryId: json['summary_id'] as String,
+      recordingId: json['recording_id'] as String,
+      type: SummaryType.fromString(json['type'] as String? ?? 'AI_GENERATED'),
+      contentStructure: contentStructure,
+      createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      if (id != null) 'id': id,
-      if (meetingTitle != null) 'meeting_title': meetingTitle,
-      'executive_summary': executiveSummary,
-      'key_takeaways': keyTakeaways,
-      'action_items': actionItems
-          .map((item) => ActionItemModel.fromEntity(item).toJson())
-          .toList(),
-      'tags': tags,
-      if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
-      if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
+      'summary_id': summaryId,
+      'recording_id': recordingId,
+      'type': type.value,
+      'content_structure': jsonEncode(contentStructure.toJson()),
+      'created_at': createdAt.toIso8601String(),
     };
   }
 
   factory SummaryModel.fromEntity(Summary entity) {
     return SummaryModel(
-      id: entity.id,
-      meetingTitle: entity.meetingTitle,
-      executiveSummary: entity.executiveSummary,
-      keyTakeaways: entity.keyTakeaways,
-      actionItems: entity.actionItems,
-      tags: entity.tags,
+      summaryId: entity.summaryId,
+      recordingId: entity.recordingId,
+      type: entity.type,
+      contentStructure: entity.contentStructure,
       createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
     );
   }
 }

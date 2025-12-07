@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
 import '../repositories/transcription_repository.dart';
-import '../../data/models/audio_upload_response.dart';
+import '../entities/audio_upload_response.dart';
 
 class UploadAudio {
   final TranscriptionRepository repository;

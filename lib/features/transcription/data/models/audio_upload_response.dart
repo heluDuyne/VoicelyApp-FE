@@ -1,56 +1,69 @@
-class AudioUploadResponse {
-  final String message;
-  final AudioFile audioFile;
-  final UploadInfo uploadInfo;
+import '../../domain/entities/audio_upload_response.dart';
+import '../../domain/entities/audio_file.dart';
+import '../../domain/entities/upload_info.dart';
 
-  AudioUploadResponse({
-    required this.message,
-    required this.audioFile,
-    required this.uploadInfo,
-  });
+// Data models for JSON serialization - extend domain entities
+class AudioUploadResponseModel extends AudioUploadResponse {
+  const AudioUploadResponseModel({
+    required String message,
+    required AudioFile audioFile,
+    required UploadInfo uploadInfo,
+  }) : super(
+         message: message,
+         audioFile: audioFile,
+         uploadInfo: uploadInfo,
+       );
 
-  factory AudioUploadResponse.fromJson(Map<String, dynamic> json) {
-    return AudioUploadResponse(
+  factory AudioUploadResponseModel.fromJson(Map<String, dynamic> json) {
+    return AudioUploadResponseModel(
       message: json['message'],
-      audioFile: AudioFile.fromJson(json['audio_file']),
-      uploadInfo: UploadInfo.fromJson(json['upload_info']),
+      audioFile: AudioFileModel.fromJson(json['audio_file']),
+      uploadInfo: UploadInfoModel.fromJson(json['upload_info']),
+    );
+  }
+
+  factory AudioUploadResponseModel.fromEntity(AudioUploadResponse entity) {
+    return AudioUploadResponseModel(
+      message: entity.message,
+      audioFile: AudioFileModel.fromEntity(entity.audioFile),
+      uploadInfo: UploadInfoModel.fromEntity(entity.uploadInfo),
     );
   }
 }
 
-class AudioFile {
-  final String filename;
-  final String originalFilename;
-  final int fileSize;
-  final double duration;
-  final String format;
-  final int id;
-  final int userId;
-  final String filePath;
-  final String status;
-  final String? transcription;
-  final double? confidenceScore;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+class AudioFileModel extends AudioFile {
+  const AudioFileModel({
+    required String filename,
+    required String originalFilename,
+    required int fileSize,
+    required double duration,
+    required String format,
+    required int id,
+    required int userId,
+    required String filePath,
+    required String status,
+    String? transcription,
+    double? confidenceScore,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) : super(
+         filename: filename,
+         originalFilename: originalFilename,
+         fileSize: fileSize,
+         duration: duration,
+         format: format,
+         id: id,
+         userId: userId,
+         filePath: filePath,
+         status: status,
+         transcription: transcription,
+         confidenceScore: confidenceScore,
+         createdAt: createdAt,
+         updatedAt: updatedAt,
+       );
 
-  AudioFile({
-    required this.filename,
-    required this.originalFilename,
-    required this.fileSize,
-    required this.duration,
-    required this.format,
-    required this.id,
-    required this.userId,
-    required this.filePath,
-    required this.status,
-    this.transcription,
-    this.confidenceScore,
-    required this.createdAt,
-    required this.updatedAt,
-  });
-
-  factory AudioFile.fromJson(Map<String, dynamic> json) {
-    return AudioFile(
+  factory AudioFileModel.fromJson(Map<String, dynamic> json) {
+    return AudioFileModel(
       filename: json['filename'],
       originalFilename: json['original_filename'],
       fileSize: json['file_size'],
@@ -66,27 +79,54 @@ class AudioFile {
       updatedAt: DateTime.parse(json['updated_at']),
     );
   }
+
+  factory AudioFileModel.fromEntity(AudioFile entity) {
+    return AudioFileModel(
+      filename: entity.filename,
+      originalFilename: entity.originalFilename,
+      fileSize: entity.fileSize,
+      duration: entity.duration,
+      format: entity.format,
+      id: entity.id,
+      userId: entity.userId,
+      filePath: entity.filePath,
+      status: entity.status,
+      transcription: entity.transcription,
+      confidenceScore: entity.confidenceScore,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
+    );
+  }
 }
 
-class UploadInfo {
-  final double fileSizeMb;
-  final String format;
-  final double durationSeconds;
-  final String status;
+class UploadInfoModel extends UploadInfo {
+  const UploadInfoModel({
+    required double fileSizeMb,
+    required String format,
+    required double durationSeconds,
+    required String status,
+  }) : super(
+         fileSizeMb: fileSizeMb,
+         format: format,
+         durationSeconds: durationSeconds,
+         status: status,
+       );
 
-  UploadInfo({
-    required this.fileSizeMb,
-    required this.format,
-    required this.durationSeconds,
-    required this.status,
-  });
-
-  factory UploadInfo.fromJson(Map<String, dynamic> json) {
-    return UploadInfo(
+  factory UploadInfoModel.fromJson(Map<String, dynamic> json) {
+    return UploadInfoModel(
       fileSizeMb: json['file_size_mb'].toDouble(),
       format: json['format'],
       durationSeconds: json['duration_seconds'].toDouble(),
       status: json['status'],
+    );
+  }
+
+  factory UploadInfoModel.fromEntity(UploadInfo entity) {
+    return UploadInfoModel(
+      fileSizeMb: entity.fileSizeMb,
+      format: entity.format,
+      durationSeconds: entity.durationSeconds,
+      status: entity.status,
     );
   }
 }
