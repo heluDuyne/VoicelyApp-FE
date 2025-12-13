@@ -159,12 +159,16 @@ class FolderModel extends Folder {
     required String userId,
     required String name,
     String? parentFolderId,
+    required bool isDeleted,
+    DateTime? deletedAt,
     required DateTime createdAt,
   }) : super(
          folderId: folderId,
          userId: userId,
          name: name,
          parentFolderId: parentFolderId,
+         isDeleted: isDeleted,
+         deletedAt: deletedAt,
          createdAt: createdAt,
        );
 
@@ -174,6 +178,11 @@ class FolderModel extends Folder {
       userId: json['user_id'] as String,
       name: json['name'] as String,
       parentFolderId: json['parent_folder_id'] as String?,
+      isDeleted: json['is_deleted'] as bool? ?? false,
+      deletedAt:
+          json['deleted_at'] != null
+              ? DateTime.parse(json['deleted_at'] as String)
+              : null,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -184,6 +193,8 @@ class FolderModel extends Folder {
       'user_id': userId,
       'name': name,
       'parent_folder_id': parentFolderId,
+      'is_deleted': isDeleted,
+      'deleted_at': deletedAt?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -271,11 +282,13 @@ class RecordingSpeakerModel extends RecordingSpeaker {
     required String recordingId,
     required String speakerLabel,
     required String displayName,
+    String? color,
   }) : super(
          id: id,
          recordingId: recordingId,
          speakerLabel: speakerLabel,
          displayName: displayName,
+         color: color,
        );
 
   factory RecordingSpeakerModel.fromJson(Map<String, dynamic> json) {
@@ -284,6 +297,7 @@ class RecordingSpeakerModel extends RecordingSpeaker {
       recordingId: json['recording_id'] as String,
       speakerLabel: json['speaker_label'] as String,
       displayName: json['display_name'] as String,
+      color: json['color'] as String?,
     );
   }
 
@@ -293,6 +307,7 @@ class RecordingSpeakerModel extends RecordingSpeaker {
       'recording_id': recordingId,
       'speaker_label': speakerLabel,
       'display_name': displayName,
+      'color': color,
     };
   }
 }

@@ -2,8 +2,11 @@ import 'dart:io';
 import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
 import '../entities/recording.dart';
+import '../entities/marker.dart';
+import '../entities/recording_tag.dart';
 
 abstract class RecordingRepository {
+  // Local recording methods (for UI/recording session management)
   /// Start recording audio
   Future<Either<Failure, void>> startRecording();
 
@@ -24,7 +27,87 @@ abstract class RecordingRepository {
 
   /// Get the current recording duration stream
   Stream<Duration> get durationStream;
+
+  // API-based methods
+  /// Create recording metadata - POST /recordings
+  Future<Either<Failure, Recording>> createRecording({
+    required String? folderId,
+    required String title,
+    required String sourceType,
+  });
+
+  /// Complete upload - POST /recordings/:id/complete-upload
+  Future<Either<Failure, Recording>> completeUpload({
+    required String recordingId,
+    required String filePath,
+    required double fileSizeMb,
+    required double durationSeconds,
+    required String originalFileName,
+  });
+
+  /// Get recordings list - GET /recordings
+  Future<Either<Failure, List<Recording>>> getRecordings({
+    String? folderId,
+    bool? isTrashed,
+    String? search,
+    String? tag,
+    int? page,
+    int? pageSize,
+  });
+
+  /// Get recording detail - GET /recordings/:id
+  Future<Either<Failure, Recording>> getRecordingDetail(String recordingId);
+
+  /// Update recording - PATCH /recordings/:id
+  Future<Either<Failure, Recording>> updateRecording({
+    required String recordingId,
+    String? title,
+    String? folderId,
+    bool? isPinned,
+    double? lastPlayPosition,
+  });
+
+  /// Soft delete recording - DELETE /recordings/:id
+  Future<Either<Failure, void>> softDeleteRecording(String recordingId);
+
+  /// Restore recording - POST /recordings/:id/restore
+  Future<Either<Failure, Recording>> restoreRecording(String recordingId);
+
+  /// Hard delete recording - DELETE /recordings/:id/hard-delete
+  Future<Either<Failure, void>> hardDeleteRecording(String recordingId);
+
+  // Markers management
+  Future<Either<Failure, Marker>> createMarker({
+    required String recordingId,
+    required double timeSeconds,
+    required String label,
+    required String type,
+    String? description,
+  });
+  Future<Either<Failure, List<Marker>>> getMarkers(String recordingId);
+  Future<Either<Failure, Marker>> updateMarker({
+    required int markerId,
+    String? label,
+    String? type,
+    String? description,
+  });
+  Future<Either<Failure, void>> deleteMarker(int markerId);
+
+  // Tags management
+  Future<Either<Failure, List<RecordingTag>>> addTags({
+    required String recordingId,
+    required List<String> tags,
+  });
+  Future<Either<Failure, void>> removeTag({
+    required String recordingId,
+    required String tag,
+  });
+  Future<Either<Failure, List<RecordingTag>>> getTags(String recordingId);
 }
+
+
+
+
 
 
 

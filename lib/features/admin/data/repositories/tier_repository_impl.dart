@@ -49,6 +49,23 @@ class TierRepositoryImpl implements TierRepository {
   }
 
   @override
+  Future<Either<Failure, Tier>> createTier(Tier tier) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final tierModel = TierModel.fromEntity(tier);
+        final createdTier = await remoteDataSource.createTier(tierModel);
+        return Right(createdTier);
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      } catch (e) {
+        return Left(ServerFailure('Failed to create tier: $e'));
+      }
+    } else {
+      return const Left(NetworkFailure('No internet connection'));
+    }
+  }
+
+  @override
   Future<Either<Failure, Tier>> updateTier(Tier tier) async {
     if (await networkInfo.isConnected) {
       try {
@@ -59,6 +76,22 @@ class TierRepositoryImpl implements TierRepository {
         return Left(ServerFailure(e.message));
       } catch (e) {
         return Left(ServerFailure('Failed to update tier: $e'));
+      }
+    } else {
+      return const Left(NetworkFailure('No internet connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteTier(int tierId) async {
+    if (await networkInfo.isConnected) {
+      try {
+        await remoteDataSource.deleteTier(tierId);
+        return const Right(null);
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      } catch (e) {
+        return Left(ServerFailure('Failed to delete tier: $e'));
       }
     } else {
       return const Left(NetworkFailure('No internet connection'));

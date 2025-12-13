@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:developer'; // Added for logging
 import 'package:dio/dio.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../../../core/constants/app_constants.dart';
 
 abstract class AuthRemoteDataSource {
   Future<Map<String, String>> login(String email, String password);
@@ -41,35 +43,109 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
     try {
       log('Attempting login with email: $email'); // Log request details
+      // Backend expects JSON body with email and password
       final response = await dio.post(
-        '/auth/login',
+        AppConstants.loginEndpoint,
         data: {'email': email, 'password': password},
       );
 
       log('Login response: ${response.data}'); // Log response details
 
       if (response.statusCode == 200) {
-        return {
-          'access_token': response.data['access_token'],
-          'refresh_token': response.data['refresh_token'],
-          'token_type': response.data['token_type'],
-        };
+        // Backend returns tokens at top level:
+        // {
+        //   "access_token": "...",
+        //   "refresh_token": "...",
+        //   "token_type": "Bearer",
+        //   "user": {"id": "...", "email": "..."}
+        // }
+        final responseData =
+            response.data is Map
+                ? Map<String, dynamic>.from(response.data)
+                : <String, dynamic>{};
+
+        final accessToken = responseData['access_token'];
+        final refreshToken = responseData['refresh_token'];
+        final tokenType = responseData['token_type'] ?? 'Bearer';
+
+        if (accessToken != null) {
+          return {
+            'access_token': accessToken,
+            'refresh_token': refreshToken ?? '',
+            'token_type': tokenType,
+          };
+        }
+
+        throw ServerException('Login response missing access_token');
       } else {
         throw ServerException('Failed to login: ${response.statusMessage}');
       }
     } catch (e) {
-      if (e is DioException && e.response != null) {
-        log('DioException response: ${e.response!.data}'); // Log error response
-        if (e.response!.statusCode == 401) {
-          throw UnauthorizedException('Invalid credentials');
-        } else if (e.response!.statusCode == 400) {
-          throw ValidationException(
-            e.response!.data['detail'] ?? 'Validation error',
+      if (e is DioException) {
+        if (e.response != null) {
+          log(
+            'DioException response: ${e.response!.data}',
+          ); // Log error response
+          final statusCode = e.response!.statusCode;
+
+          // Extract error message from response
+          String errorMessage = 'Unknown error';
+          if (e.response!.data is Map) {
+            errorMessage =
+                e.response!.data['detail'] ??
+                e.response!.data['message'] ??
+                e.response!.data['error'] ??
+                e.response!.data['msg'] ??
+                'Request failed';
+
+            // Check for Supabase-specific errors
+            final errorDetail = e.response!.data['detail'] ?? '';
+            if (errorDetail.toString().contains('Email not confirmed') ||
+                errorDetail.toString().contains('email_not_confirmed')) {
+              throw ValidationException(
+                'Please check your email and confirm your account before logging in.',
+              );
+            }
+          } else if (e.response!.data is String) {
+            errorMessage = e.response!.data;
+            if (errorMessage.contains('Email not confirmed') ||
+                errorMessage.contains('email_not_confirmed')) {
+              throw ValidationException(
+                'Please check your email and confirm your account before logging in.',
+              );
+            }
+          }
+
+          if (statusCode == 401) {
+            throw UnauthorizedException('Invalid credentials');
+          } else if (statusCode == 400 || statusCode == 422) {
+            // 422 is Unprocessable Entity - usually validation errors
+            throw ValidationException(errorMessage);
+          } else if (statusCode == 500) {
+            throw ServerException('Server error: $errorMessage');
+          } else {
+            throw ServerException(
+              'Request failed (${statusCode}): $errorMessage',
+            );
+          }
+        } else {
+          // No response - network or connection error
+          log('DioException without response: ${e.message}');
+          throw ServerException(
+            'Network error: ${e.message ?? 'Unable to connect to server'}',
           );
         }
+      } else if (e is ServerException ||
+          e is ValidationException ||
+          e is UnauthorizedException) {
+        // Re-throw if already the right exception type
+        rethrow;
+      } else {
+        log(
+          'Login failed with unexpected error: ${e.toString()}',
+        ); // Log general error
+        throw ServerException('Login failed: ${e.toString()}');
       }
-      log('Login failed: ${e.toString()}'); // Log general error
-      throw ServerException('Login failed: ${e.toString()}');
     }
   }
 
@@ -80,29 +156,187 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String password,
   ) async {
     try {
+      log('Attempting signup with email: $email'); // Log request details
+      // Backend expects 'name' not 'full_name', and name is optional
+      final requestData = <String, dynamic>{
+        'email': email,
+        'password': password,
+      };
+      if (name.isNotEmpty) {
+        requestData['name'] = name;
+      }
+
+      log('Signup request data: $requestData'); // Log what we're sending
+
       final response = await dio.post(
-        '/auth/register', // Updated endpoint to match AppConstants
-        data: {'full_name': name, 'email': email, 'password': password},
+        AppConstants.signupEndpoint,
+        data: requestData,
+        options: Options(headers: {'Content-Type': 'application/json'}),
       );
 
-      if (response.statusCode == 201) {
-        return {
-          'access_token': response.data['access_token'],
-          'refresh_token': response.data['refresh_token'],
-          'token_type': response.data['token_type'],
-        };
+      log('Signup response status: ${response.statusCode}'); // Log status code
+      log(
+        'Signup response data type: ${response.data.runtimeType}',
+      ); // Log data type
+      log('Signup response data: ${response.data}'); // Log response details
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Handle different response structures
+        Map<String, dynamic> responseData;
+
+        if (response.data is Map) {
+          responseData = Map<String, dynamic>.from(response.data);
+        } else if (response.data is String) {
+          // Try to parse JSON string
+          try {
+            responseData = Map<String, dynamic>.from(
+              jsonDecode(response.data as String),
+            );
+          } catch (e) {
+            log('Failed to parse response as JSON: $e');
+            throw ServerException('Invalid response format from server');
+          }
+        } else {
+          log('Unexpected response data type: ${response.data.runtimeType}');
+          throw ServerException('Unexpected response format from server');
+        }
+
+        // Backend returns tokens at top level after auto-login:
+        // {
+        //   "access_token": "...",
+        //   "refresh_token": "...",
+        //   "token_type": "Bearer",
+        //   "user": {"id": "...", "email": "...", "full_name": "..."}
+        // }
+        final accessToken = responseData['access_token'];
+        final refreshToken = responseData['refresh_token'];
+        final tokenType = responseData['token_type'] ?? 'Bearer';
+
+        if (accessToken != null) {
+          return {
+            'access_token': accessToken,
+            'refresh_token': refreshToken ?? '',
+            'token_type': tokenType,
+          };
+        } else {
+          // If no token found, it might mean email confirmation is required
+          // (edge case where auto-login fails due to email confirmation requirement)
+          log(
+            'Signup response missing access_token. Full response: $responseData',
+          );
+
+          // Extract email from response or request
+          String? userEmail;
+          if (responseData['user'] != null && responseData['user'] is Map) {
+            final userObj = responseData['user'] as Map;
+            userEmail = userObj['email']?.toString();
+          }
+          userEmail ??= requestData['email']?.toString();
+
+          // If we have an email, throw email confirmation exception
+          if (userEmail != null) {
+            throw EmailConfirmationRequiredException(
+              userEmail,
+              'Please check your email and confirm your account.',
+            );
+          } else {
+            // If we can't find email, throw generic exception
+            throw ServerException(
+              'Signup succeeded but backend did not return access token. '
+              'You may need to check your email for confirmation. '
+              'Response fields: ${responseData.keys.join(", ")}',
+            );
+          }
+        }
       } else {
-        throw ServerException('Failed to sign up: ${response.statusMessage}');
+        throw ServerException(
+          'Failed to sign up: ${response.statusMessage} (Status: ${response.statusCode})',
+        );
       }
     } catch (e) {
-      if (e is DioException && e.response != null) {
-        if (e.response!.statusCode == 400) {
-          throw ValidationException(
-            e.response!.data['detail'] ?? 'Validation error',
+      if (e is DioException) {
+        if (e.response != null) {
+          log(
+            'DioException response: ${e.response!.data}',
+          ); // Log error response
+          final statusCode = e.response!.statusCode;
+
+          // Extract error message from response
+          String errorMessage = 'Unknown error';
+          if (e.response!.data is Map) {
+            // FastAPI validation errors are often in 'detail' as a list or string
+            final detail = e.response!.data['detail'];
+            if (detail is List && detail.isNotEmpty) {
+              // Pydantic validation errors come as a list of error objects
+              final errors = detail
+                  .map((e) {
+                    if (e is Map) {
+                      final loc =
+                          e['loc'] is List ? e['loc'].join('.') : 'field';
+                      final msg = e['msg'] ?? e['type'] ?? 'validation error';
+                      return '$loc: $msg';
+                    }
+                    return e.toString();
+                  })
+                  .join(', ');
+              errorMessage = errors;
+            } else if (detail is String) {
+              errorMessage = detail;
+            } else {
+              errorMessage =
+                  detail?.toString() ??
+                  e.response!.data['message'] ??
+                  e.response!.data['error'] ??
+                  e.response!.data['msg'] ??
+                  'Server error occurred';
+            }
+
+            // Check for Supabase-specific errors
+            final errorDetailStr = errorMessage.toLowerCase();
+            if (errorDetailStr.contains('email not confirmed') ||
+                errorDetailStr.contains('email_not_confirmed')) {
+              throw ValidationException(
+                'Please check your email and confirm your account.',
+              );
+            }
+          } else if (e.response!.data is String) {
+            errorMessage = e.response!.data;
+            if (errorMessage.toLowerCase().contains('email not confirmed') ||
+                errorMessage.toLowerCase().contains('email_not_confirmed')) {
+              throw ValidationException(
+                'Please check your email and confirm your account.',
+              );
+            }
+          }
+
+          if (statusCode == 400 || statusCode == 422) {
+            throw ValidationException(errorMessage);
+          } else if (statusCode == 429) {
+            // Too Many Requests - rate limiting
+            throw ValidationException(errorMessage);
+          } else if (statusCode == 500) {
+            throw ServerException('Server error: $errorMessage');
+          } else {
+            throw ServerException(
+              'Request failed (${statusCode}): $errorMessage',
+            );
+          }
+        } else {
+          // No response - network or connection error
+          log('DioException without response: ${e.message}');
+          throw ServerException(
+            'Network error: ${e.message ?? 'Unable to connect to server'}',
           );
         }
+      } else if (e is ServerException || e is ValidationException) {
+        // Re-throw if already the right exception type
+        rethrow;
+      } else {
+        log(
+          'Signup failed with unexpected error: ${e.toString()}',
+        ); // Log general error
+        throw ServerException('Signup failed: ${e.toString()}');
       }
-      throw ServerException('Signup failed: ${e.toString()}');
     }
   }
 
@@ -110,7 +344,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<Map<String, String>> refresh(String refreshToken) async {
     try {
       final response = await dio.post(
-        '/auth/refresh',
+        AppConstants.refreshTokenEndpoint,
         data: {'refresh_token': refreshToken},
       );
 
@@ -156,7 +390,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
     try {
       final response = await dio.get(
-        '/auth/me',
+        AppConstants.authMeEndpoint,
         options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
       );
 

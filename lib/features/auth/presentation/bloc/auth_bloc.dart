@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import '../../../../core/errors/failures.dart';
 import '../../domain/usecases/login_user.dart';
 import '../../domain/usecases/signup_user.dart';
 
@@ -56,7 +57,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
 
     result.fold(
-      (failure) => emit(AuthError(failure.message)),
+      (failure) {
+        if (failure is EmailConfirmationRequiredFailure) {
+          emit(AuthSignupSuccess(failure.email));
+        } else {
+          emit(AuthError(failure.message));
+        }
+      },
       (tokens) => emit(
         AuthAuthenticated(
           accessToken: tokens['access_token']!,

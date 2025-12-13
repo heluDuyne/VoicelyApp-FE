@@ -92,6 +92,11 @@ class RecordingLocalDataSourceImpl implements RecordingLocalDataSource {
         durationSeconds: _currentDuration.inSeconds.toDouble(),
         fileSizeMb: fileSizeMb,
         status: RecordingStatus.uploading, // New recording needs to be uploaded
+        sourceType: SourceType.recorded,
+        isPinned: false,
+        isTrashed: false,
+        originalFileName: fileName,
+        lastPlayPosition: null,
         createdAt: DateTime.now(),
         deletedAt: null,
       );
@@ -158,6 +163,10 @@ class RecordingLocalDataSourceImpl implements RecordingLocalDataSource {
     _recorder.dispose();
   }
 }
+
+
+
+
 
 
 

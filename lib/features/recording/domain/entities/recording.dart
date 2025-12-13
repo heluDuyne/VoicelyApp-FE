@@ -19,6 +19,21 @@ enum RecordingStatus {
   }
 }
 
+enum SourceType {
+  recorded('RECORDED'),
+  imported('IMPORTED');
+
+  final String value;
+  const SourceType(this.value);
+
+  static SourceType fromString(String value) {
+    return SourceType.values.firstWhere(
+      (type) => type.value == value.toUpperCase(),
+      orElse: () => SourceType.recorded,
+    );
+  }
+}
+
 class Recording extends Equatable {
   final String recordingId; // uuid recording_id PK
   final String userId; // uuid user_id FK
@@ -28,6 +43,11 @@ class Recording extends Equatable {
   final double durationSeconds;
   final double fileSizeMb;
   final RecordingStatus status; // Enum: UPLOADING, PROCESSED, ERROR
+  final SourceType sourceType; // RECORDED or IMPORTED
+  final bool isPinned;
+  final bool isTrashed; // Soft delete flag
+  final String? originalFileName;
+  final double? lastPlayPosition; // Last playback position in seconds
   final DateTime createdAt;
   final DateTime? deletedAt; // Hỗ trợ Soft Delete (Thùng rác)
 
@@ -40,6 +60,11 @@ class Recording extends Equatable {
     required this.durationSeconds,
     required this.fileSizeMb,
     required this.status,
+    required this.sourceType,
+    required this.isPinned,
+    required this.isTrashed,
+    this.originalFileName,
+    this.lastPlayPosition,
     required this.createdAt,
     this.deletedAt,
   });
@@ -53,6 +78,11 @@ class Recording extends Equatable {
     double? durationSeconds,
     double? fileSizeMb,
     RecordingStatus? status,
+    SourceType? sourceType,
+    bool? isPinned,
+    bool? isTrashed,
+    String? originalFileName,
+    double? lastPlayPosition,
     DateTime? createdAt,
     DateTime? deletedAt,
   }) {
@@ -65,6 +95,11 @@ class Recording extends Equatable {
       durationSeconds: durationSeconds ?? this.durationSeconds,
       fileSizeMb: fileSizeMb ?? this.fileSizeMb,
       status: status ?? this.status,
+      sourceType: sourceType ?? this.sourceType,
+      isPinned: isPinned ?? this.isPinned,
+      isTrashed: isTrashed ?? this.isTrashed,
+      originalFileName: originalFileName ?? this.originalFileName,
+      lastPlayPosition: lastPlayPosition ?? this.lastPlayPosition,
       createdAt: createdAt ?? this.createdAt,
       deletedAt: deletedAt ?? this.deletedAt,
     );
@@ -80,10 +115,19 @@ class Recording extends Equatable {
     durationSeconds,
     fileSizeMb,
     status,
+    sourceType,
+    isPinned,
+    isTrashed,
+    originalFileName,
+    lastPlayPosition,
     createdAt,
     deletedAt,
   ];
 }
+
+
+
+
 
 
 

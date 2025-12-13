@@ -23,6 +23,8 @@ class _TranscriptListScreenState extends State<TranscriptListScreen> {
       userId: 'user_001',
       name: 'Project Meetings',
       parentFolderId: null,
+      isDeleted: false,
+      deletedAt: null,
       createdAt: DateTime.now().subtract(const Duration(days: 30)),
     ),
     Folder(
@@ -30,6 +32,8 @@ class _TranscriptListScreenState extends State<TranscriptListScreen> {
       userId: 'user_001',
       name: 'User Research',
       parentFolderId: null,
+      isDeleted: false,
+      deletedAt: null,
       createdAt: DateTime.now().subtract(const Duration(days: 20)),
     ),
     Folder(
@@ -37,6 +41,8 @@ class _TranscriptListScreenState extends State<TranscriptListScreen> {
       userId: 'user_001',
       name: 'Personal Notes',
       parentFolderId: null,
+      isDeleted: false,
+      deletedAt: null,
       createdAt: DateTime.now().subtract(const Duration(days: 10)),
     ),
   ];

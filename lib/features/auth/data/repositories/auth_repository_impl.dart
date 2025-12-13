@@ -57,6 +57,20 @@ class AuthRepositoryImpl implements AuthRepository {
         return Left(NetworkFailure(e.message));
       } on ValidationException catch (e) {
         return Left(ValidationFailure(e.message));
+      } on EmailConfirmationRequiredException catch (e) {
+        return Left(EmailConfirmationRequiredFailure(e.email, e.message));
+      } catch (e) {
+        // Catch any other exceptions and convert to ServerFailure
+        return Left(
+          ServerFailure(
+            e is Exception && e.toString().contains('Exception')
+                ? e
+                    .toString()
+                    .replaceAll('Exception: ', '')
+                    .replaceAll('Exception', '')
+                : 'Signup failed: ${e.toString()}',
+          ),
+        );
       }
     } else {
       return const Left(NetworkFailure('No internet connection'));

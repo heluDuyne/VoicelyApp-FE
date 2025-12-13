@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../models/audit_log_model.dart';
 
 abstract class AuditLogRemoteDataSource {
@@ -6,6 +7,8 @@ abstract class AuditLogRemoteDataSource {
   Future<List<AuditLogModel>> getAuditLogs({
     String? userId,
     String? resourceType,
+    String? actionType,
+    String? status,
     DateTime? startDate,
     DateTime? endDate,
     int? limit,
@@ -22,7 +25,7 @@ class AuditLogRemoteDataSourceImpl implements AuditLogRemoteDataSource {
   Future<AuditLogModel> createAuditLog(AuditLogModel auditLog) async {
     try {
       final response = await dio.post(
-        '/admin/audit-logs',
+        AppConstants.adminAuditLogsEndpoint,
         data: auditLog.toJson(),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -39,6 +42,8 @@ class AuditLogRemoteDataSourceImpl implements AuditLogRemoteDataSource {
   Future<List<AuditLogModel>> getAuditLogs({
     String? userId,
     String? resourceType,
+    String? actionType,
+    String? status,
     DateTime? startDate,
     DateTime? endDate,
     int? limit,
@@ -47,12 +52,14 @@ class AuditLogRemoteDataSourceImpl implements AuditLogRemoteDataSource {
       final queryParams = <String, dynamic>{};
       if (userId != null) queryParams['user_id'] = userId;
       if (resourceType != null) queryParams['resource_type'] = resourceType;
+      if (actionType != null) queryParams['action_type'] = actionType;
+      if (status != null) queryParams['status'] = status;
       if (startDate != null) queryParams['start_date'] = startDate.toIso8601String();
       if (endDate != null) queryParams['end_date'] = endDate.toIso8601String();
       if (limit != null) queryParams['limit'] = limit;
 
       final response = await dio.get(
-        '/admin/audit-logs',
+        AppConstants.adminAuditLogsEndpoint,
         queryParameters: queryParams,
       );
       if (response.statusCode == 200) {

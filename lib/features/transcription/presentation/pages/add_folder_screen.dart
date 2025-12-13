@@ -21,6 +21,8 @@ class _AddFolderScreenState extends State<AddFolderScreen> {
       userId: 'user_001',
       name: 'Project Meetings',
       parentFolderId: null,
+      isDeleted: false,
+      deletedAt: null,
       createdAt: DateTime.now().subtract(const Duration(days: 30)),
     ),
     Folder(
@@ -28,6 +30,8 @@ class _AddFolderScreenState extends State<AddFolderScreen> {
       userId: 'user_001',
       name: 'User Research',
       parentFolderId: null,
+      isDeleted: false,
+      deletedAt: null,
       createdAt: DateTime.now().subtract(const Duration(days: 20)),
     ),
     Folder(
@@ -35,6 +39,8 @@ class _AddFolderScreenState extends State<AddFolderScreen> {
       userId: 'user_001',
       name: 'Personal Notes',
       parentFolderId: null,
+      isDeleted: false,
+      deletedAt: null,
       createdAt: DateTime.now().subtract(const Duration(days: 10)),
     ),
   ];
@@ -69,6 +75,8 @@ class _AddFolderScreenState extends State<AddFolderScreen> {
       userId: 'user_001', // TODO: Get from current user
       name: folderName,
       parentFolderId: _selectedParentFolderId,
+      isDeleted: false,
+      deletedAt: null,
       createdAt: DateTime.now(),
     );
 

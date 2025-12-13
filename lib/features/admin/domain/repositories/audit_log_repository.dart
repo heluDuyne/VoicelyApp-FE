@@ -7,6 +7,8 @@ abstract class AuditLogRepository {
   Future<Either<Failure, List<AuditLog>>> getAuditLogs({
     String? userId,
     String? resourceType,
+    String? actionType,
+    String? status,
     DateTime? startDate,
     DateTime? endDate,
     int? limit,

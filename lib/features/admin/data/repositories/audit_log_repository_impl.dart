@@ -37,6 +37,8 @@ class AuditLogRepositoryImpl implements AuditLogRepository {
   Future<Either<Failure, List<AuditLog>>> getAuditLogs({
     String? userId,
     String? resourceType,
+    String? actionType,
+    String? status,
     DateTime? startDate,
     DateTime? endDate,
     int? limit,
@@ -46,6 +48,8 @@ class AuditLogRepositoryImpl implements AuditLogRepository {
         final auditLogModels = await remoteDataSource.getAuditLogs(
           userId: userId,
           resourceType: resourceType,
+          actionType: actionType,
+          status: status,
           startDate: startDate,
           endDate: endDate,
           limit: limit,

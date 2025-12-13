@@ -16,6 +16,7 @@ import '../features/auth/presentation/bloc/auth_bloc.dart';
 
 // Features - Recording
 import '../features/recording/data/datasources/recording_local_data_source.dart';
+import '../features/recording/data/datasources/recording_remote_data_source.dart';
 import '../features/recording/data/repositories/recording_repository_impl.dart';
 import '../features/recording/domain/repositories/recording_repository.dart';
 import '../features/recording/domain/usecases/start_recording.dart';
@@ -85,12 +86,20 @@ Future<void> init() async {
 
   // Repository
   sl.registerLazySingleton<RecordingRepository>(
-    () => RecordingRepositoryImpl(localDataSource: sl()),
+    () => RecordingRepositoryImpl(
+      localDataSource: sl(),
+      remoteDataSource: sl(),
+      networkInfo: sl(),
+      authLocalDataSource: sl(),
+    ),
   );
 
   // Data sources
   sl.registerLazySingleton<RecordingLocalDataSource>(
     () => RecordingLocalDataSourceImpl(),
+  );
+  sl.registerLazySingleton<RecordingRemoteDataSource>(
+    () => RecordingRemoteDataSourceImpl(dio: sl()),
   );
 
   //! Features - Transcription

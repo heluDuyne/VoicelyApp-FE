@@ -10,6 +10,11 @@ class RecordingModel extends Recording {
     required double durationSeconds,
     required double fileSizeMb,
     required RecordingStatus status,
+    required SourceType sourceType,
+    required bool isPinned,
+    required bool isTrashed,
+    String? originalFileName,
+    double? lastPlayPosition,
     required DateTime createdAt,
     DateTime? deletedAt,
   }) : super(
@@ -21,6 +26,11 @@ class RecordingModel extends Recording {
          durationSeconds: durationSeconds,
          fileSizeMb: fileSizeMb,
          status: status,
+         sourceType: sourceType,
+         isPinned: isPinned,
+         isTrashed: isTrashed,
+         originalFileName: originalFileName,
+         lastPlayPosition: lastPlayPosition,
          createdAt: createdAt,
          deletedAt: deletedAt,
        );
@@ -35,6 +45,11 @@ class RecordingModel extends Recording {
       durationSeconds: recording.durationSeconds,
       fileSizeMb: recording.fileSizeMb,
       status: recording.status,
+      sourceType: recording.sourceType,
+      isPinned: recording.isPinned,
+      isTrashed: recording.isTrashed,
+      originalFileName: recording.originalFileName,
+      lastPlayPosition: recording.lastPlayPosition,
       createdAt: recording.createdAt,
       deletedAt: recording.deletedAt,
     );
@@ -52,6 +67,16 @@ class RecordingModel extends Recording {
       status: RecordingStatus.fromString(
         json['status'] as String? ?? 'UPLOADING',
       ),
+      sourceType: SourceType.fromString(
+        json['source_type'] as String? ?? 'RECORDED',
+      ),
+      isPinned: json['is_pinned'] as bool? ?? false,
+      isTrashed: json['is_trashed'] as bool? ?? false,
+      originalFileName: json['original_file_name'] as String?,
+      lastPlayPosition:
+          json['last_play_position'] != null
+              ? (json['last_play_position'] as num).toDouble()
+              : null,
       createdAt: DateTime.parse(json['created_at'] as String),
       deletedAt:
           json['deleted_at'] != null
@@ -70,8 +95,17 @@ class RecordingModel extends Recording {
       'duration_seconds': durationSeconds,
       'file_size_mb': fileSizeMb,
       'status': status.value,
+      'source_type': sourceType.value,
+      'is_pinned': isPinned,
+      'is_trashed': isTrashed,
+      'original_file_name': originalFileName,
+      'last_play_position': lastPlayPosition,
       'created_at': createdAt.toIso8601String(),
       'deleted_at': deletedAt?.toIso8601String(),
     };
   }
 }
+
+
+
+

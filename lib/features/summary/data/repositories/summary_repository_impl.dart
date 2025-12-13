@@ -123,5 +123,103 @@ class SummaryRepositoryImpl implements SummaryRepository {
       return const Left(NetworkFailure('No internet connection'));
     }
   }
+
+  @override
+  Future<Either<Failure, Summary>> summarizeRecording({
+    required String recordingId,
+    String? summaryStyle,
+  }) async {
+    final token = await authLocalDataSource.getAccessToken();
+    if (token == null) {
+      return const Left(UnauthorizedFailure('Please login to summarize recording'));
+    }
+
+    if (await networkInfo.isConnected) {
+      try {
+        final summaryModel = await remoteDataSource.summarizeRecording(
+          recordingId: recordingId,
+          summaryStyle: summaryStyle,
+        );
+        return Right(summaryModel);
+      } catch (e) {
+        return Left(ServerFailure(e.toString()));
+      }
+    } else {
+      return const Left(NetworkFailure('No internet connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Summary>>> getSummaries({
+    required String recordingId,
+    bool? latest,
+  }) async {
+    final token = await authLocalDataSource.getAccessToken();
+    if (token == null) {
+      return const Left(UnauthorizedFailure('Please login to get summaries'));
+    }
+
+    if (await networkInfo.isConnected) {
+      try {
+        final summaryModels = await remoteDataSource.getSummaries(
+          recordingId: recordingId,
+          latest: latest,
+        );
+        return Right(summaryModels);
+      } catch (e) {
+        return Left(ServerFailure(e.toString()));
+      }
+    } else {
+      return const Left(NetworkFailure('No internet connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Summary>> getSummaryDetail(String summaryId) async {
+    final token = await authLocalDataSource.getAccessToken();
+    if (token == null) {
+      return const Left(UnauthorizedFailure('Please login to get summary detail'));
+    }
+
+    if (await networkInfo.isConnected) {
+      try {
+        final summaryModel = await remoteDataSource.getSummaryDetail(summaryId);
+        return Right(summaryModel);
+      } catch (e) {
+        return Left(ServerFailure(e.toString()));
+      }
+    } else {
+      return const Left(NetworkFailure('No internet connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Summary>> updateSummary({
+    required String summaryId,
+    Map<String, dynamic>? contentStructure,
+    String? type,
+    bool? isLatest,
+  }) async {
+    final token = await authLocalDataSource.getAccessToken();
+    if (token == null) {
+      return const Left(UnauthorizedFailure('Please login to update summary'));
+    }
+
+    if (await networkInfo.isConnected) {
+      try {
+        final summaryModel = await remoteDataSource.updateSummary(
+          summaryId: summaryId,
+          contentStructure: contentStructure,
+          type: type,
+          isLatest: isLatest,
+        );
+        return Right(summaryModel);
+      } catch (e) {
+        return Left(ServerFailure(e.toString()));
+      }
+    } else {
+      return const Left(NetworkFailure('No internet connection'));
+    }
+  }
 }
 

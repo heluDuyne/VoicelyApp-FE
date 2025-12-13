@@ -11,6 +11,8 @@ class GetAuditLogs {
   Future<Either<Failure, List<AuditLog>>> call({
     String? userId,
     String? resourceType,
+    String? actionType,
+    String? status,
     DateTime? startDate,
     DateTime? endDate,
     int? limit,
@@ -18,6 +20,8 @@ class GetAuditLogs {
     return await repository.getAuditLogs(
       userId: userId,
       resourceType: resourceType,
+      actionType: actionType,
+      status: status,
       startDate: startDate,
       endDate: endDate,
       limit: limit,
