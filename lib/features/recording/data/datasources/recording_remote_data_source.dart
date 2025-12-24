@@ -1,10 +1,22 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/errors/exceptions.dart';
+import '../../../../core/supabase/supabase_client.dart';
+import '../../../../core/supabase/supabase_config.dart';
 import '../models/recording_model.dart';
 import '../models/marker_model.dart';
 import '../models/recording_tag_model.dart';
+import '../models/export_job_model.dart';
 
 abstract class RecordingRemoteDataSource {
+  /// Upload audio file to Supabase Storage
+  Future<String> uploadAudioToSupabase({
+    required File audioFile,
+    required String userId,
+    required String recordingId,
+  });
   Future<RecordingModel> createRecording({
     required String? folderId,
     required String title,
@@ -17,6 +29,7 @@ abstract class RecordingRemoteDataSource {
     required double durationSeconds,
     required String originalFileName,
   });
+  Future<void> transcribeRecording(String recordingId);
   Future<List<RecordingModel>> getRecordings({
     String? folderId,
     bool? isTrashed,
@@ -53,23 +66,126 @@ abstract class RecordingRemoteDataSource {
     String? description,
   });
   Future<void> deleteMarker(int markerId);
+  Future<ExportJobModel> exportRecording(String recordingId, String exportType);
+  Future<ExportJobModel> getExportJob(String exportId);
 
   // Tags
   Future<List<RecordingTagModel>> addTags({
     required String recordingId,
     required List<String> tags,
   });
-  Future<void> removeTag({
-    required String recordingId,
-    required String tag,
-  });
+  Future<void> removeTag({required String recordingId, required String tag});
   Future<List<RecordingTagModel>> getTags(String recordingId);
 }
 
 class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
   final Dio dio;
+  final SupabaseClient supabaseClient;
 
-  RecordingRemoteDataSourceImpl({required this.dio});
+  RecordingRemoteDataSourceImpl({
+    required this.dio,
+    required this.supabaseClient,
+  });
+
+  @override
+  Future<String> uploadAudioToSupabase({
+    required File audioFile,
+    required String
+    userId, // Database user_id (kept for metadata, but not used for path)
+    required String recordingId,
+  }) async {
+    try {
+      // Get Supabase Auth user ID for storage path (required for RLS policies)
+      // RLS policies check against auth.uid(), not database user_id
+      // IMPORTANT: Sync auth state first to ensure session is established
+      await supabaseClient.syncAuthState();
+
+      final supabase = supabaseClient.supabase.client;
+
+      // Try to get user ID from currentUser first
+      var supabaseAuthUserId = supabase.auth.currentUser?.id;
+
+      // If currentUser is null, try to get from currentSession
+      if (supabaseAuthUserId == null || supabaseAuthUserId.isEmpty) {
+        final currentSession = supabase.auth.currentSession;
+        if (currentSession != null && currentSession.user.id.isNotEmpty) {
+          supabaseAuthUserId = currentSession.user.id;
+          print(
+            'Info: Using session user ID (currentUser was null): $supabaseAuthUserId',
+          );
+        }
+      }
+
+      if (supabaseAuthUserId == null || supabaseAuthUserId.isEmpty) {
+        throw Exception(
+          'Cannot upload: Supabase Auth user ID is not available. '
+          'Please ensure you are logged in via Supabase Auth. '
+          'Session exists: ${supabase.auth.currentSession != null}',
+        );
+      }
+
+      print(
+        'Info: Using Supabase Auth user ID for storage path: $supabaseAuthUserId '
+        '(database user_id: $userId)',
+      );
+
+      // Read file bytes
+      final fileBytes = await audioFile.readAsBytes();
+
+      // Generate unique file name
+      final originalFileName = audioFile.path.split('/').last;
+      final fileName = SupabaseConfig.generateFileName(originalFileName);
+
+      // Generate storage path using Supabase Auth user ID 
+      final storagePath = SupabaseConfig.recordingPath(
+        supabaseAuthUserId, 
+        recordingId,
+        fileName,
+      );
+
+      print(
+        'Info: Generated storage path: $storagePath (first segment: ${storagePath.split('/').isNotEmpty ? storagePath.split('/')[0] : "empty"})',
+      );
+
+      // Determine content type
+      final extension = originalFileName.split('.').last.toLowerCase();
+      final contentType = _getContentType(extension);
+
+      // Upload to Supabase Storage
+      final storagePathResult = await supabaseClient.uploadFile(
+        bucket: SupabaseConfig.audioBucket,
+        path: storagePath,
+        fileBytes: fileBytes,
+        contentType: contentType,
+        metadata: {
+          'original_filename': originalFileName,
+          'recording_id': recordingId,
+          'user_id': userId,
+        },
+      );
+
+      return storagePathResult;
+    } catch (e) {
+      throw Exception('Failed to upload audio to Supabase: $e');
+    }
+  }
+
+  String _getContentType(String extension) {
+    switch (extension) {
+      case 'm4a':
+        return 'audio/mp4';
+      case 'mp3':
+        return 'audio/mpeg';
+      case 'wav':
+        return 'audio/wav';
+      case 'aac':
+        return 'audio/aac';
+      case 'ogg':
+        return 'audio/ogg';
+      default:
+        return 'audio/mpeg';
+    }
+  }
 
   @override
   Future<RecordingModel> createRecording({
@@ -78,21 +194,139 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
     required String sourceType,
   }) async {
     try {
+      // Build request data - only include folder_id if it's not null
+      final requestData = <String, dynamic>{
+        'title': title,
+        'source_type': sourceType,
+      };
+
+      // Only include folder_id if it's not null 
+      if (folderId != null) {
+        requestData['folder_id'] = folderId;
+      }
+
+      if (kDebugMode) {
+        debugPrint(
+          'Creating recording: POST ${AppConstants.recordingsEndpoint}',
+        );
+        debugPrint('Request data: $requestData');
+      }
+
       final response = await dio.post(
         AppConstants.recordingsEndpoint,
-        data: {
-          'folder_id': folderId,
-          'title': title,
-          'source_type': sourceType,
-        },
+        data: requestData,
       );
+
       if (response.statusCode == 201) {
         return RecordingModel.fromJson(response.data);
       } else {
-        throw Exception('Failed to create recording');
+        // Extract error message from response body
+        final responseData = response.data;
+        String errorMessage = 'Unexpected status code: ${response.statusCode}';
+
+        if (responseData != null) {
+          if (responseData is Map) {
+            final detail = responseData['detail'];
+            if (detail != null) {
+              if (detail is List) {
+                errorMessage = detail
+                    .map((e) => e is Map ? e['msg']?.toString() : e.toString())
+                    .where((msg) => msg != null)
+                    .join(', ');
+              } else {
+                errorMessage = detail.toString();
+              }
+            } else {
+              errorMessage =
+                  responseData['message']?.toString() ??
+                  responseData.toString();
+            }
+          } else {
+            errorMessage = responseData.toString();
+          }
+        }
+
+        final detailedError = 'Status ${response.statusCode}: $errorMessage';
+
+        // Log unexpected status codes for debugging
+        if (kDebugMode) {
+          debugPrint('Error creating recording: $detailedError');
+          debugPrint('Request URL: ${response.requestOptions.uri}');
+          debugPrint('Request data: ${response.requestOptions.data}');
+          debugPrint('Response status: ${response.statusCode}');
+          debugPrint('Response data: $responseData');
+        }
+
+        // Throw appropriate exception based on status code
+        if (response.statusCode == 400) {
+          throw ValidationException(detailedError);
+        } else if (response.statusCode == 401) {
+          throw UnauthorizedException(detailedError);
+        } else {
+          throw ServerException(detailedError);
+        }
       }
     } on DioException catch (e) {
-      throw Exception('Network error: ${e.message}');
+      // Extract detailed error information
+      final statusCode = e.response?.statusCode;
+      final responseData = e.response?.data;
+
+      // Try to extract error message from backend response
+      String errorMessage = 'Network error';
+      if (responseData != null) {
+        if (responseData is Map) {
+          final detail = responseData['detail'];
+          if (detail != null) {
+            if (detail is List) {
+              errorMessage = detail
+                  .map((e) => e is Map ? e['msg']?.toString() : e.toString())
+                  .where((msg) => msg != null)
+                  .join(', ');
+            } else {
+              errorMessage = detail.toString();
+            }
+          } else {
+            errorMessage =
+                responseData['message']?.toString() ?? responseData.toString();
+          }
+        } else {
+          errorMessage = responseData.toString();
+        }
+      } else if (e.message != null) {
+        errorMessage = e.message!;
+      }
+
+      final detailedError =
+          statusCode != null
+              ? 'Status $statusCode: $errorMessage'
+              : errorMessage;
+
+      if (kDebugMode) {
+        debugPrint('Error creating recording: $detailedError');
+        debugPrint('Request URL: ${e.requestOptions.uri}');
+        debugPrint('Request data: ${e.requestOptions.data}');
+        debugPrint('Response status: $statusCode');
+        debugPrint('Response data: $responseData');
+      }
+
+      // Throw appropriate exception based on status code
+      if (statusCode == 401) {
+        throw UnauthorizedException(detailedError);
+      } else if (statusCode == 400) {
+        throw ValidationException(detailedError);
+      } else if (statusCode != null) {
+        throw ServerException(detailedError);
+      } else {
+        throw NetworkException(detailedError);
+      }
+    } catch (e) {
+      if (e is ServerException ||
+          e is UnauthorizedException ||
+          e is ValidationException ||
+          e is NetworkException) {
+        rethrow;
+      }
+      throw ServerException('Failed to create recording: $e');
     }
   }
 
@@ -105,22 +339,150 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
     required String originalFileName,
   }) async {
     try {
-      final response = await dio.post(
-        '${AppConstants.recordingsEndpoint}/$recordingId/complete-upload',
-        data: {
-          'file_path': filePath,
-          'file_size_mb': fileSizeMb,
-          'duration_seconds': durationSeconds,
-          'original_file_name': originalFileName,
-        },
-      );
+      final requestData = {
+        'file_path': filePath,
+        'file_size_mb': fileSizeMb,
+        'duration_seconds': durationSeconds,
+        'original_file_name': originalFileName,
+      };
+
+      final url =
+          '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId/complete-upload';
+
+      if (kDebugMode) {
+        debugPrint('Completing upload: POST $url');
+        debugPrint('Request data: $requestData');
+      }
+
+      final response = await dio.post(url, data: requestData);
+
       if (response.statusCode == 200) {
         return RecordingModel.fromJson(response.data);
       } else {
-        throw Exception('Failed to complete upload');
+        throw ServerException('Unexpected status code: ${response.statusCode}');
       }
     } on DioException catch (e) {
-      throw Exception('Network error: ${e.message}');
+      // Extract detailed error information
+      final statusCode = e.response?.statusCode;
+      final responseData = e.response?.data;
+
+      // Try to extract error message from backend response
+      String errorMessage = 'Network error';
+      if (responseData != null) {
+        if (responseData is Map) {
+          errorMessage =
+              responseData['detail']?.toString() ??
+              responseData['message']?.toString() ??
+              responseData.toString();
+        } else {
+          errorMessage = responseData.toString();
+        }
+      } else if (e.message != null) {
+        errorMessage = e.message!;
+      }
+
+      final detailedError =
+          statusCode != null
+              ? 'Status $statusCode: $errorMessage'
+              : errorMessage;
+
+      if (kDebugMode) {
+        debugPrint('Error completing upload: $detailedError');
+        debugPrint('Request URL: ${e.requestOptions.uri}');
+        debugPrint('Request data: ${e.requestOptions.data}');
+        debugPrint('Response status: $statusCode');
+        debugPrint('Response data: $responseData');
+      }
+
+      // Throw appropriate exception based on status code
+      if (statusCode == 401) {
+        throw UnauthorizedException(detailedError);
+      } else if (statusCode == 400) {
+        throw ValidationException(detailedError);
+      } else if (statusCode != null) {
+        throw ServerException(detailedError);
+      } else {
+        throw NetworkException(detailedError);
+      }
+    } catch (e) {
+      if (e is ServerException ||
+          e is UnauthorizedException ||
+          e is ValidationException ||
+          e is NetworkException) {
+        rethrow;
+      }
+      throw ServerException('Failed to complete upload: $e');
+    }
+  }
+
+  @override
+  Future<void> transcribeRecording(String recordingId) async {
+    try {
+      final url =
+          '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId/transcribe';
+
+      if (kDebugMode) {
+        debugPrint('Transcribing recording: POST $url');
+      }
+
+      final response = await dio.post(url);
+
+      // Backend returns 202 Accepted for async transcription
+      if (response.statusCode == 202) {
+        return;
+      } else {
+        throw ServerException('Unexpected status code: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      // Extract detailed error information
+      final statusCode = e.response?.statusCode;
+      final responseData = e.response?.data;
+
+      // Try to extract error message from backend response
+      String errorMessage = 'Network error';
+      if (responseData != null) {
+        if (responseData is Map) {
+          errorMessage =
+              responseData['detail']?.toString() ??
+              responseData['message']?.toString() ??
+              responseData.toString();
+        } else {
+          errorMessage = responseData.toString();
+        }
+      } else if (e.message != null) {
+        errorMessage = e.message!;
+      }
+
+      final detailedError =
+          statusCode != null
+              ? 'Status $statusCode: $errorMessage'
+              : errorMessage;
+
+      if (kDebugMode) {
+        debugPrint('Error transcribing recording: $detailedError');
+        debugPrint('Request URL: ${e.requestOptions.uri}');
+        debugPrint('Response status: $statusCode');
+        debugPrint('Response data: $responseData');
+      }
+
+      // Throw appropriate exception based on status code
+      if (statusCode == 401) {
+        throw UnauthorizedException(detailedError);
+      } else if (statusCode == 400) {
+        throw ValidationException(detailedError);
+      } else if (statusCode != null) {
+        throw ServerException(detailedError);
+      } else {
+        throw NetworkException(detailedError);
+      }
+    } catch (e) {
+      if (e is ServerException ||
+          e is UnauthorizedException ||
+          e is ValidationException ||
+          e is NetworkException) {
+        rethrow;
+      }
+      throw ServerException('Failed to transcribe recording: $e');
     }
   }
 
@@ -161,7 +523,9 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
   @override
   Future<RecordingModel> getRecordingDetail(String recordingId) async {
     try {
-      final response = await dio.get('${AppConstants.recordingsEndpoint}/$recordingId');
+      final response = await dio.get(
+        '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId',
+      );
       if (response.statusCode == 200) {
         return RecordingModel.fromJson(response.data);
       } else {
@@ -183,12 +547,21 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
     try {
       final data = <String, dynamic>{};
       if (title != null) data['title'] = title;
-      if (folderId != null) data['folder_id'] = folderId;
+      final hasOtherUpdates =
+          title != null || isPinned != null || lastPlayPosition != null;
+      if (folderId != null) {
+        // Has a value, include it
+        data['folder_id'] = folderId;
+      } else if (!hasOtherUpdates) {
+        // No other updates, assume folderId is being explicitly set to null (move to root)
+        data['folder_id'] = null;
+      }
       if (isPinned != null) data['is_pinned'] = isPinned;
-      if (lastPlayPosition != null) data['last_play_position'] = lastPlayPosition;
+      if (lastPlayPosition != null)
+        data['last_play_position'] = lastPlayPosition;
 
       final response = await dio.patch(
-        '${AppConstants.recordingsEndpoint}/$recordingId',
+        '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId',
         data: data,
       );
       if (response.statusCode == 200) {
@@ -204,7 +577,9 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
   @override
   Future<void> softDeleteRecording(String recordingId) async {
     try {
-      final response = await dio.delete('${AppConstants.recordingsEndpoint}/$recordingId');
+      final response = await dio.delete(
+        '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId',
+      );
       if (response.statusCode != 200 && response.statusCode != 204) {
         throw Exception('Failed to soft delete recording');
       }
@@ -216,7 +591,9 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
   @override
   Future<RecordingModel> restoreRecording(String recordingId) async {
     try {
-      final response = await dio.post('${AppConstants.recordingsEndpoint}/$recordingId/restore');
+      final response = await dio.post(
+        '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId/restore',
+      );
       if (response.statusCode == 200) {
         return RecordingModel.fromJson(response.data);
       } else {
@@ -230,7 +607,9 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
   @override
   Future<void> hardDeleteRecording(String recordingId) async {
     try {
-      final response = await dio.delete('${AppConstants.recordingsEndpoint}/$recordingId/hard-delete');
+      final response = await dio.delete(
+        '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId/hard-delete',
+      );
       if (response.statusCode != 204) {
         throw Exception('Failed to hard delete recording');
       }
@@ -249,7 +628,7 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
   }) async {
     try {
       final response = await dio.post(
-        '${AppConstants.recordingsEndpoint}/$recordingId/markers',
+        '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId/markers',
         data: {
           'time_seconds': timeSeconds,
           'label': label,
@@ -270,7 +649,9 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
   @override
   Future<List<MarkerModel>> getMarkers(String recordingId) async {
     try {
-      final response = await dio.get('${AppConstants.recordingsEndpoint}/$recordingId/markers');
+      final response = await dio.get(
+        '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId/markers',
+      );
       if (response.statusCode == 200) {
         return (response.data as List)
             .map((json) => MarkerModel.fromJson(json))
@@ -296,7 +677,10 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
       if (type != null) data['type'] = type;
       if (description != null) data['description'] = description;
 
-      final response = await dio.patch('${AppConstants.markersEndpoint}/$markerId', data: data);
+      final response = await dio.patch(
+        '${AppConstants.markersEndpoint}/$markerId',
+        data: data,
+      );
       if (response.statusCode == 200) {
         return MarkerModel.fromJson(response.data);
       } else {
@@ -310,10 +694,38 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
   @override
   Future<void> deleteMarker(int markerId) async {
     try {
-      final response = await dio.delete('${AppConstants.markersEndpoint}/$markerId');
+      final response = await dio.delete(
+        '${AppConstants.markersEndpoint}/$markerId',
+      );
       if (response.statusCode != 200 && response.statusCode != 204) {
         throw Exception('Failed to delete marker');
       }
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  @override
+  Future<ExportJobModel> exportRecording(
+    String recordingId,
+    String exportType,
+  ) async {
+    try {
+      final response = await dio.post(
+        '/recordings/$recordingId/export',
+        data: {'recording_id': recordingId, 'export_type': exportType},
+      );
+      return ExportJobModel.fromJson(response.data);
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  Future<ExportJobModel> getExportJob(String exportId) async {
+    try {
+      // Backend router is mounted at /recordings, so full path is /recordings/export-jobs/{id}
+      final response = await dio.get('/recordings/export-jobs/$exportId');
+      return ExportJobModel.fromJson(response.data);
     } on DioException catch (e) {
       throw Exception('Network error: ${e.message}');
     }
@@ -326,7 +738,7 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
   }) async {
     try {
       final response = await dio.post(
-        '${AppConstants.recordingsEndpoint}/$recordingId/tags',
+        '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId/tags',
         data: {'tags': tags},
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -347,7 +759,9 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
     required String tag,
   }) async {
     try {
-      final response = await dio.delete('${AppConstants.recordingsEndpoint}/$recordingId/tags/$tag');
+      final response = await dio.delete(
+        '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId/tags/$tag',
+      );
       if (response.statusCode != 200 && response.statusCode != 204) {
         throw Exception('Failed to remove tag');
       }
@@ -359,7 +773,9 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
   @override
   Future<List<RecordingTagModel>> getTags(String recordingId) async {
     try {
-      final response = await dio.get('${AppConstants.recordingsEndpoint}/$recordingId/tags');
+      final response = await dio.get(
+        '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId/tags',
+      );
       if (response.statusCode == 200) {
         return (response.data as List)
             .map((json) => RecordingTagModel.fromJson(json))
@@ -372,4 +788,3 @@ class RecordingRemoteDataSourceImpl implements RecordingRemoteDataSource {
     }
   }
 }
-

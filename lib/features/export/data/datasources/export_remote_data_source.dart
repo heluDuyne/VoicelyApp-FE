@@ -22,7 +22,7 @@ class ExportRemoteDataSourceImpl implements ExportRemoteDataSource {
   }) async {
     try {
       final response = await dio.post(
-        '${AppConstants.recordingsEndpoint}/$recordingId/export',
+        '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId/export',
         data: {'export_type': exportType},
       );
       if (response.statusCode == 200 || response.statusCode == 201) {

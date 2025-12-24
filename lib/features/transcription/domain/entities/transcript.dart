@@ -6,6 +6,9 @@ class Transcript extends Equatable {
   final String language; // VD: en, vi
   final double confidenceScore; // Độ tin cậy AI
   final DateTime createdAt;
+  final int? versionNo; // Optional: version number
+  final String? type; // Optional: transcript type (e.g., AI_GENERATED)
+  final bool? isActive; // Optional: whether transcript is active
 
   const Transcript({
     required this.transcriptId,
@@ -13,6 +16,9 @@ class Transcript extends Equatable {
     required this.language,
     required this.confidenceScore,
     required this.createdAt,
+    this.versionNo,
+    this.type,
+    this.isActive,
   });
 
   @override
@@ -22,6 +28,9 @@ class Transcript extends Equatable {
     language,
     confidenceScore,
     createdAt,
+    versionNo,
+    type,
+    isActive,
   ];
 }
 

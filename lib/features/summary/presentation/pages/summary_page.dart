@@ -628,24 +628,4 @@ class SummaryPage extends StatelessWidget {
     );
   }
 
-  // Tags removed - not in database schema
-  // Widget _buildTags(List<String> tags) {
-  //   return Wrap(
-  //     spacing: 8,
-  //     runSpacing: 8,
-  //     children: tags.map((tag) {
-  //       return Container(
-  //         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-  //         decoration: BoxDecoration(
-  //           color: const Color(0xFF282E39),
-  //           borderRadius: BorderRadius.circular(8),
-  //         ),
-  //         child: Text(
-  //           '#$tag',
-  //           style: TextStyle(fontSize: 13, color: Colors.grey[300]),
-  //         ),
-  //       );
-  //     }).toList(),
-  //   );
-  // }
 }

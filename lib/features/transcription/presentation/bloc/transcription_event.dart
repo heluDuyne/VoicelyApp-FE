@@ -30,4 +30,24 @@ class TranscribeAudioEvent extends TranscriptionEvent {
   List<Object> get props => [audioId, languageCode];
 }
 
-class ResetTranscriptionEvent extends TranscriptionEvent {}
+class ResetTranscriptionEvent extends TranscriptionEvent {
+  const ResetTranscriptionEvent();
+}
+
+class LoadTranscriptDetailEvent extends TranscriptionEvent {
+  final String transcriptId;
+
+  const LoadTranscriptDetailEvent(this.transcriptId);
+
+  @override
+  List<Object?> get props => [transcriptId];
+}
+
+class LoadTranscriptByRecordingIdEvent extends TranscriptionEvent {
+  final String recordingId;
+
+  const LoadTranscriptByRecordingIdEvent(this.recordingId);
+
+  @override
+  List<Object?> get props => [recordingId];
+}

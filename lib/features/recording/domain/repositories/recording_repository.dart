@@ -4,6 +4,22 @@ import '../../../../core/errors/failures.dart';
 import '../entities/recording.dart';
 import '../entities/marker.dart';
 import '../entities/recording_tag.dart';
+import '../entities/export_job.dart';
+import '../../../transcription/domain/entities/transcript_segment.dart';
+
+class UploadTranscribeResult {
+  final String recordingId;
+  final String transcriptId;
+  final Recording recording;
+  final List<TranscriptSegment> segments;
+
+  UploadTranscribeResult({
+    required this.recordingId,
+    required this.transcriptId,
+    required this.recording,
+    required this.segments,
+  });
+}
 
 abstract class RecordingRepository {
   // Local recording methods (for UI/recording session management)
@@ -34,6 +50,25 @@ abstract class RecordingRepository {
     required String? folderId,
     required String title,
     required String sourceType,
+  });
+
+  /// Upload audio file to Supabase and complete upload
+  Future<Either<Failure, Recording>> uploadAndCompleteRecording({
+    required File audioFile,
+    required String recordingId,
+    required String userId,
+    required double fileSizeMb,
+    required double durationSeconds,
+    required String originalFileName,
+  });
+
+  /// Complete flow: Upload audio, complete upload, and transcribe
+  /// Returns recordingId and transcriptId
+  Future<Either<Failure, UploadTranscribeResult>> uploadAndTranscribeRecording({
+    required File audioFile,
+    required String title,
+    required String userId,
+    String? folderId,
   });
 
   /// Complete upload - POST /recordings/:id/complete-upload
@@ -69,6 +104,11 @@ abstract class RecordingRepository {
 
   /// Soft delete recording - DELETE /recordings/:id
   Future<Either<Failure, void>> softDeleteRecording(String recordingId);
+  Future<ExportJob> exportRecording(
+    String recordingId,
+    String exportType,
+  ); // Updated return type
+  Future<ExportJob> getExportJob(String exportId); // Added new method
 
   /// Restore recording - POST /recordings/:id/restore
   Future<Either<Failure, Recording>> restoreRecording(String recordingId);
@@ -104,13 +144,3 @@ abstract class RecordingRepository {
   });
   Future<Either<Failure, List<RecordingTag>>> getTags(String recordingId);
 }
-
-
-
-
-
-
-
-
-
-

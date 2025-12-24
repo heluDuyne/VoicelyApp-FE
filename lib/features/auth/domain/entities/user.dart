@@ -16,13 +16,13 @@ enum UserRole {
 }
 
 class User extends Equatable {
-  final String id; // uuid user_id PK
-  final String email; // Unique
+  final String id; 
+  final String email; 
   final String fullName;
-  final int tierId; // FK - Liên kết gói dịch vụ
-  final UserRole role; // Enum: 'USER', 'ADMIN'
-  final bool isActive; // Trạng thái khóa/mở
-  final double storageUsedMb; // Dung lượng đã dùng (Cache)
+  final int tierId; 
+  final UserRole role; 
+  final bool isActive; 
+  final double storageUsedMb; 
   final DateTime createdAt;
 
   const User({

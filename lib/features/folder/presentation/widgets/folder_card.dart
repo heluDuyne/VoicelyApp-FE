@@ -4,6 +4,7 @@ class FolderCard extends StatelessWidget {
   final String name;
   final int fileCount;
   final VoidCallback? onTap;
+  final VoidCallback? onMoreTap;
   final Color iconColor;
   final Color backgroundColor;
 
@@ -12,6 +13,7 @@ class FolderCard extends StatelessWidget {
     required this.name,
     required this.fileCount,
     this.onTap,
+    this.onMoreTap,
     this.iconColor = const Color(0xFF3B82F6),
     this.backgroundColor = const Color(0xFF282E39),
   });
@@ -21,20 +23,38 @@ class FolderCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            Icon(
-              Icons.folder,
-              color: iconColor,
-              size: 32,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(Icons.folder, color: iconColor, size: 40),
+                if (onMoreTap != null)
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onMoreTap,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6.0),
+                        child: Icon(
+                          Icons.edit,
+                          color: Colors.grey[500],
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
+            const SizedBox(height: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -48,13 +68,10 @@ class FolderCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Text(
                   '$fileCount ${fileCount == 1 ? 'file' : 'files'}',
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: Colors.grey[400], fontSize: 13),
                 ),
               ],
             ),
@@ -82,23 +99,22 @@ class AddFolderCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
         child: CustomPaint(
           painter: DashedBorderPainter(
             color: borderColor,
-            strokeWidth: 1,
+            strokeWidth: 1.5,
             dashWidth: 6,
             dashSpace: 4,
             borderRadius: 12,
           ),
           child: Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.add, color: textColor, size: 20),
-                const SizedBox(width: 8),
+                Icon(Icons.add, color: textColor, size: 32),
+                const SizedBox(height: 4),
                 Text(
                   'Add Folder',
                   style: TextStyle(
@@ -134,18 +150,19 @@ class DashedBorderPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
+    final paint =
+        Paint()
+          ..color = color
+          ..strokeWidth = strokeWidth
+          ..style = PaintingStyle.stroke;
 
-    final path = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(0, 0, size.width, size.height),
-          Radius.circular(borderRadius),
-        ),
-      );
+    final path =
+        Path()..addRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(0, 0, size.width, size.height),
+            Radius.circular(borderRadius),
+          ),
+        );
 
     final dashPath = Path();
     for (final metric in path.computeMetrics()) {
@@ -166,13 +183,3 @@ class DashedBorderPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
-
-
-
-
-
-
-
-
-

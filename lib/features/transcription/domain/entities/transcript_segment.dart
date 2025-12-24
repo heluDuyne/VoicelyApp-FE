@@ -7,6 +7,8 @@ class TranscriptSegment extends Equatable {
   final double endTime; // Thời gian kết thúc
   final String content; // Nội dung văn bản
   final String speakerLabel; // VD: SPEAKER_01
+  final int? sequence; // Optional: segment sequence number
+  final bool? isUserEdited; // Optional: whether segment was edited by user
 
   const TranscriptSegment({
     required this.segmentId,
@@ -15,6 +17,8 @@ class TranscriptSegment extends Equatable {
     required this.endTime,
     required this.content,
     required this.speakerLabel,
+    this.sequence,
+    this.isUserEdited,
   });
 
   @override
@@ -25,6 +29,8 @@ class TranscriptSegment extends Equatable {
     endTime,
     content,
     speakerLabel,
+    sequence,
+    isUserEdited,
   ];
 }
 

@@ -29,6 +29,18 @@ abstract class SummaryRemoteDataSource {
     String? type,
     bool? isLatest,
   });
+
+  /// Generate summary for a recording - POST /recordings/{id}/summarize
+  Future<void> generateSummary(
+    String recordingId, {
+    String summaryStyle = 'MEETING',
+  });
+
+  /// Fetch latest summary ID for a recording - GET /recordings/{id}/summaries?latest=true
+  Future<String?> fetchLatestSummaryId(String recordingId);
+
+  /// Fetch summary content by ID - GET /summaries/{id}
+  Future<SummaryModel> fetchSummary(String summaryId);
 }
 
 class SummaryRemoteDataSourceImpl implements SummaryRemoteDataSource {
@@ -141,7 +153,7 @@ class SummaryRemoteDataSourceImpl implements SummaryRemoteDataSource {
       if (summaryStyle != null) data['summary_style'] = summaryStyle;
 
       final response = await dio.post(
-        '${AppConstants.recordingsEndpoint}/$recordingId/summarize',
+        '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId/summarize',
         data: data,
         options: Options(
           headers: {
@@ -170,7 +182,7 @@ class SummaryRemoteDataSourceImpl implements SummaryRemoteDataSource {
       if (latest != null) queryParams['latest'] = latest;
 
       final response = await dio.get(
-        '${AppConstants.recordingsEndpoint}/$recordingId/summaries',
+        '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId/summaries',
         queryParameters: queryParams,
         options: Options(
           headers: {
@@ -240,6 +252,105 @@ class SummaryRemoteDataSourceImpl implements SummaryRemoteDataSource {
         return SummaryModel.fromJson(response.data);
       } else {
         throw Exception('Failed to update summary');
+      }
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  @override
+  Future<void> generateSummary(
+    String recordingId, {
+    String summaryStyle = 'MEETING',
+  }) async {
+    try {
+      final url =
+          '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId/summarize';
+
+      final response = await dio.post(
+        url,
+        data: {'summary_style': summaryStyle},
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      // Accept 200, 201, or 202 (async processing)
+      if (response.statusCode != 200 &&
+          response.statusCode != 201 &&
+          response.statusCode != 202) {
+        throw Exception(
+          'Failed to generate summary: unexpected status ${response.statusCode}',
+        );
+      }
+      // Return void on success
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  @override
+  Future<String?> fetchLatestSummaryId(String recordingId) async {
+    try {
+      final url =
+          '${AppConstants.recordingsEndpoint.replaceAll(RegExp(r'/$'), '')}/$recordingId/summaries';
+
+      final response = await dio.get(
+        url,
+        queryParameters: {'latest': true},
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final summaries = response.data as List<dynamic>;
+        if (summaries.isEmpty) {
+          return null;
+        }
+        // Return the first summary's id
+        final firstSummary = summaries.first as Map<String, dynamic>;
+        return firstSummary['id'] as String? ??
+            firstSummary['summary_id'] as String?;
+      } else {
+        throw Exception('Failed to fetch latest summary ID: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      // Handle 401 specifically - token might need refresh
+      if (e.response?.statusCode == 401) {
+        throw Exception('Authentication failed. Please try again.');
+      }
+      // Handle 404 - no summaries exist yet (not an error)
+      if (e.response?.statusCode == 404) {
+        return null;
+      }
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  @override
+  Future<SummaryModel> fetchSummary(String summaryId) async {
+    try {
+      final url =
+          '${AppConstants.summariesEndpoint.replaceAll(RegExp(r'/$'), '')}/$summaryId';
+
+      final response = await dio.get(
+        url,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return SummaryModel.fromJson(response.data);
+      } else {
+        throw Exception('Failed to fetch summary');
       }
     } on DioException catch (e) {
       throw Exception('Network error: ${e.message}');

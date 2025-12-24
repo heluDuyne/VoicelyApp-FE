@@ -1,9 +1,9 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
-import '../repositories/transcription_repository.dart';
+import '../repositories/folder_repository.dart';
 
 class DeleteFolder {
-  final TranscriptionRepository repository;
+  final FolderRepository repository;
 
   DeleteFolder(this.repository);
 

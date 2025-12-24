@@ -5,6 +5,8 @@ import '../../../../core/routes/app_router.dart';
 import '../../../../core/utils/validation_utils.dart';
 import '../bloc/auth_bloc.dart';
 import '../widgets/email_confirmation_success_screen.dart';
+import '../../../summary/presentation/bloc/summary_bloc.dart';
+import '../../../summary/presentation/bloc/summary_event.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -99,6 +101,10 @@ class _SignupPageState extends State<SignupPage> {
               context,
             ).showSnackBar(SnackBar(content: Text(state.message)));
           } else if (state is AuthAuthenticated) {
+            // Auto-fetch data BEFORE navigation
+            context.read<SummaryBloc>().add(const LoadSummariesListEvent());
+            context.read<SummaryBloc>().add(const LoadFoldersEvent());
+            // Then navigate
             context.go(AppRoutes.recording);
           }
         },
@@ -110,250 +116,250 @@ class _SignupPageState extends State<SignupPage> {
             }
             // Show signup form otherwise
             return SafeArea(
-              child: SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight:
-                        screenHeight -
-                        MediaQuery.of(context).padding.top -
-                        MediaQuery.of(context).padding.bottom,
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth > 600 ? screenWidth * 0.15 : 24.0,
-                    ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          SizedBox(height: isSmallScreen ? 32 : 48),
-                          // Logo
-                          Center(
-                            child: Container(
-                              width: isSmallScreen ? 56 : 64,
-                              height: isSmallScreen ? 56 : 64,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 3),
-                              ),
-                              child: Icon(
-                                Icons.mic,
-                                color: Colors.white,
-                                size: isSmallScreen ? 28 : 32,
-                              ),
+          child: SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight:
+                    screenHeight -
+                    MediaQuery.of(context).padding.top -
+                    MediaQuery.of(context).padding.bottom,
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth > 600 ? screenWidth * 0.15 : 24.0,
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(height: isSmallScreen ? 32 : 48),
+                      // Logo
+                      Center(
+                        child: Container(
+                          width: isSmallScreen ? 56 : 64,
+                          height: isSmallScreen ? 56 : 64,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                          ),
+                          child: Icon(
+                            Icons.mic,
+                            color: Colors.white,
+                            size: isSmallScreen ? 28 : 32,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: isSmallScreen ? 20 : 28),
+                      // Create Account Title
+                      const Center(
+                        child: Text(
+                          'Create Account',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Subtitle
+                      Center(
+                        child: Text(
+                          'Sign up to get started with Voicely',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: isSmallScreen ? 24 : 32),
+                      // Full Name Label
+                      const Text(
+                        'Full Name',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Full Name Field
+                      TextFormField(
+                        controller: _nameController,
+                        validator: ValidationUtils.validateName,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: _buildInputDecoration(
+                          'Enter your full name',
+                        ),
+                      ),
+                      SizedBox(height: isSmallScreen ? 16 : 20),
+                      // Email Label
+                      const Text(
+                        'Email',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Email Field
+                      TextFormField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: ValidationUtils.validateEmail,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: _buildInputDecoration('Enter your email'),
+                      ),
+                      SizedBox(height: isSmallScreen ? 16 : 20),
+                      // Password Label
+                      const Text(
+                        'Password',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Password Field
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: !_isPasswordVisible,
+                        validator: ValidationUtils.validatePassword,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: _buildInputDecoration(
+                          'Enter your password',
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                              color: Colors.grey[600],
                             ),
-                          ),
-                          SizedBox(height: isSmallScreen ? 20 : 28),
-                          // Create Account Title
-                          const Center(
-                            child: Text(
-                              'Create Account',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // Subtitle
-                          Center(
-                            child: Text(
-                              'Sign up to get started with Voicely',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: isSmallScreen ? 24 : 32),
-                          // Full Name Label
-                          const Text(
-                            'Full Name',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // Full Name Field
-                          TextFormField(
-                            controller: _nameController,
-                            validator: ValidationUtils.validateName,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: _buildInputDecoration(
-                              'Enter your full name',
-                            ),
-                          ),
-                          SizedBox(height: isSmallScreen ? 16 : 20),
-                          // Email Label
-                          const Text(
-                            'Email',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // Email Field
-                          TextFormField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            validator: ValidationUtils.validateEmail,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: _buildInputDecoration('Enter your email'),
-                          ),
-                          SizedBox(height: isSmallScreen ? 16 : 20),
-                          // Password Label
-                          const Text(
-                            'Password',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // Password Field
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: !_isPasswordVisible,
-                            validator: ValidationUtils.validatePassword,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: _buildInputDecoration(
-                              'Enter your password',
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _isPasswordVisible
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
-                                  color: Colors.grey[600],
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _isPasswordVisible = !_isPasswordVisible;
-                                  });
-                                },
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: isSmallScreen ? 16 : 20),
-                          // Re-enter Password Label
-                          const Text(
-                            'Re-enter Password',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // Re-enter Password Field
-                          TextFormField(
-                            controller: _confirmPasswordController,
-                            obscureText: !_isConfirmPasswordVisible,
-                            validator: _validateConfirmPassword,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: _buildInputDecoration(
-                              'Re-enter your password',
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _isConfirmPasswordVisible
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
-                                  color: Colors.grey[600],
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _isConfirmPasswordVisible =
-                                        !_isConfirmPasswordVisible;
-                                  });
-                                },
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: isSmallScreen ? 24 : 32),
-                          // Sign Up Button
-                          BlocBuilder<AuthBloc, AuthState>(
-                            builder: (context, state) {
-                              return SizedBox(
-                                width: double.infinity,
-                                height: 56,
-                                child: ElevatedButton(
-                                  onPressed:
-                                      state is AuthLoading
-                                          ? null
-                                          : _onSignupPressed,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF3B82F6),
-                                    foregroundColor: Colors.white,
-                                    disabledBackgroundColor: const Color(
-                                      0xFF3B82F6,
-                                    ).withValues(alpha: 0.6),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                  child:
-                                      state is AuthLoading
-                                          ? const SizedBox(
-                                            height: 20,
-                                            width: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              valueColor:
-                                                  AlwaysStoppedAnimation<Color>(
-                                                    Colors.white,
-                                                  ),
-                                            ),
-                                          )
-                                          : const Text(
-                                            'Sign Up',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                ),
-                              );
+                            onPressed: () {
+                              setState(() {
+                                _isPasswordVisible = !_isPasswordVisible;
+                              });
                             },
                           ),
-                          SizedBox(height: isSmallScreen ? 20 : 24),
-                          // Login Link
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Already have an account? ',
-                                style: TextStyle(
-                                  color: Colors.grey[500],
-                                  fontSize: 14,
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () => context.go(AppRoutes.login),
-                                child: const Text(
-                                  'Login',
-                                  style: TextStyle(
-                                    color: Color(0xFF3B82F6),
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ],
+                        ),
+                      ),
+                      SizedBox(height: isSmallScreen ? 16 : 20),
+                      // Re-enter Password Label
+                      const Text(
+                        'Re-enter Password',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Re-enter Password Field
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        obscureText: !_isConfirmPasswordVisible,
+                        validator: _validateConfirmPassword,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: _buildInputDecoration(
+                          'Re-enter your password',
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isConfirmPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                              color: Colors.grey[600],
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isConfirmPasswordVisible =
+                                    !_isConfirmPasswordVisible;
+                              });
+                            },
                           ),
-                          SizedBox(height: isSmallScreen ? 24 : 32),
+                        ),
+                      ),
+                      SizedBox(height: isSmallScreen ? 24 : 32),
+                      // Sign Up Button
+                      BlocBuilder<AuthBloc, AuthState>(
+                        builder: (context, state) {
+                          return SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed:
+                                  state is AuthLoading
+                                      ? null
+                                      : _onSignupPressed,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF3B82F6),
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: const Color(
+                                  0xFF3B82F6,
+                                ).withValues(alpha: 0.6),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child:
+                                  state is AuthLoading
+                                      ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                        ),
+                                      )
+                                      : const Text(
+                                        'Sign Up',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                            ),
+                          );
+                        },
+                      ),
+                      SizedBox(height: isSmallScreen ? 20 : 24),
+                      // Login Link
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Already have an account? ',
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 14,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => context.go(AppRoutes.login),
+                            child: const Text(
+                              'Login',
+                              style: TextStyle(
+                                color: Color(0xFF3B82F6),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                    ),
+                      SizedBox(height: isSmallScreen ? 24 : 32),
+                    ],
                   ),
                 ),
               ),
+            ),
+          ),
             );
           },
         ),

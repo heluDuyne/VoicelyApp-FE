@@ -7,7 +7,10 @@ import '../../../auth/data/datasources/auth_local_data_source.dart';
 import '../../domain/entities/recording.dart';
 import '../../domain/entities/marker.dart';
 import '../../domain/entities/recording_tag.dart';
+import '../../domain/entities/export_job.dart';
 import '../../domain/repositories/recording_repository.dart';
+import '../../../transcription/domain/repositories/transcription_repository.dart';
+import '../../../transcription/domain/entities/transcript.dart';
 import '../datasources/recording_local_data_source.dart';
 import '../datasources/recording_remote_data_source.dart';
 
@@ -16,13 +19,36 @@ class RecordingRepositoryImpl implements RecordingRepository {
   final RecordingRemoteDataSource remoteDataSource;
   final NetworkInfo networkInfo;
   final AuthLocalDataSource authLocalDataSource;
+  final TranscriptionRepository transcriptionRepository;
 
   RecordingRepositoryImpl({
     required this.localDataSource,
     required this.remoteDataSource,
     required this.networkInfo,
     required this.authLocalDataSource,
+    required this.transcriptionRepository,
   });
+
+  @override
+  Future<ExportJob> exportRecording(
+    String recordingId,
+    String exportType,
+  ) async {
+    try {
+      return await remoteDataSource.exportRecording(recordingId, exportType);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<ExportJob> getExportJob(String exportId) async {
+    try {
+      return await remoteDataSource.getExportJob(exportId);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
 
   @override
   Future<Either<Failure, void>> startRecording() async {
@@ -114,10 +140,201 @@ class RecordingRepositoryImpl implements RecordingRepository {
           sourceType: sourceType,
         );
         return Right(recording);
+      } on UnauthorizedException catch (e) {
+        return Left(UnauthorizedFailure(e.message));
+      } on ValidationException catch (e) {
+        return Left(ServerFailure(e.message));
       } on ServerException catch (e) {
         return Left(ServerFailure(e.message));
+      } on NetworkException catch (e) {
+        return Left(NetworkFailure(e.message));
       } catch (e) {
         return Left(ServerFailure('Failed to create recording: $e'));
+      }
+    } else {
+      return const Left(NetworkFailure('No internet connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Recording>> uploadAndCompleteRecording({
+    required File audioFile,
+    required String recordingId,
+    required String userId,
+    required double fileSizeMb,
+    required double durationSeconds,
+    required String originalFileName,
+  }) async {
+    final token = await authLocalDataSource.getAccessToken();
+    if (token == null) {
+      return const Left(
+        UnauthorizedFailure('Please login to upload recording'),
+      );
+    }
+
+    if (await networkInfo.isConnected) {
+      try {
+        // Upload to Supabase Storage first
+        final storagePath = await remoteDataSource.uploadAudioToSupabase(
+          audioFile: audioFile,
+          userId: userId,
+          recordingId: recordingId,
+        );
+
+        // Then complete the upload with the storage path
+        final recording = await remoteDataSource.completeUpload(
+          recordingId: recordingId,
+          filePath: storagePath,
+          fileSizeMb: fileSizeMb,
+          durationSeconds: durationSeconds,
+          originalFileName: originalFileName,
+        );
+        return Right(recording);
+      } on UnauthorizedException catch (e) {
+        return Left(UnauthorizedFailure(e.message));
+      } on ValidationException catch (e) {
+        return Left(ServerFailure(e.message));
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      } on NetworkException catch (e) {
+        return Left(NetworkFailure(e.message));
+      } catch (e) {
+        return Left(
+          ServerFailure('Failed to upload and complete recording: $e'),
+        );
+      }
+    } else {
+      return const Left(NetworkFailure('No internet connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, UploadTranscribeResult>> uploadAndTranscribeRecording({
+    required File audioFile,
+    required String title,
+    required String userId,
+    String? folderId,
+  }) async {
+    final token = await authLocalDataSource.getAccessToken();
+    if (token == null) {
+      return const Left(
+        UnauthorizedFailure('Please login to upload and transcribe'),
+      );
+    }
+
+    if (await networkInfo.isConnected) {
+      try {
+        // 1. Create recording metadata
+        final createResult = await createRecording(
+          folderId: folderId,
+          title: title,
+          sourceType: 'RECORDED',
+        );
+
+        return await createResult.fold((failure) => Left(failure), (
+          recording,
+        ) async {
+          // 2. Get file info
+          final fileSizeBytes = await audioFile.length();
+          final fileSizeMb = fileSizeBytes / (1024 * 1024);
+          final originalFileName = audioFile.path.split('/').last;
+          const durationSeconds = 0.0; // Will be calculated by backend
+
+          // 3. Upload to Supabase and complete upload
+          final uploadResult = await uploadAndCompleteRecording(
+            audioFile: audioFile,
+            recordingId: recording.recordingId,
+            userId: userId,
+            fileSizeMb: fileSizeMb,
+            durationSeconds: durationSeconds,
+            originalFileName: originalFileName,
+          );
+
+          return await uploadResult.fold((failure) => Left(failure), (
+            updatedRecording,
+          ) async {
+            // 4. Transcribe recording (returns 202 Accepted - async)
+            final transcribeResult = await transcriptionRepository
+                .transcribeRecording(recording.recordingId);
+
+            return await transcribeResult.fold((failure) => Left(failure), (
+              _,
+            ) async {
+              // 5. Poll for transcript with retries (transcription is async)
+              const maxRetries = 12; // 12 retries
+              const retryDelay = Duration(
+                seconds: 5,
+              ); // 5 seconds between retries
+              const maxWaitTime = Duration(
+                seconds: 60,
+              ); // 60 seconds total timeout
+
+              List<Transcript>? transcripts;
+              bool transcriptFound = false;
+              int retryCount = 0;
+              final startTime = DateTime.now();
+
+              while (!transcriptFound &&
+                  retryCount < maxRetries &&
+                  DateTime.now().difference(startTime) < maxWaitTime) {
+                // Wait before retrying (except first attempt)
+                if (retryCount > 0) {
+                  await Future.delayed(retryDelay);
+                }
+
+                final transcriptsResult = await transcriptionRepository
+                    .getTranscripts(
+                      recordingId: recording.recordingId,
+                      latest: true,
+                    );
+
+                await transcriptsResult.fold(
+                  (failure) => null, // Continue retrying on error
+                  (transcriptsList) {
+                    if (transcriptsList.isNotEmpty) {
+                      transcripts = transcriptsList;
+                      transcriptFound = true;
+                    }
+                    return null;
+                  },
+                );
+
+                retryCount++;
+              }
+
+              // Check if transcript was found
+              if (transcripts == null || transcripts!.isEmpty) {
+                return Left<Failure, UploadTranscribeResult>(
+                  ServerFailure(
+                    'Transcription is still processing. Please check back in a few moments.',
+                  ),
+                );
+              }
+
+              final transcriptId = transcripts!.first.transcriptId;
+
+              // 6. Fetch transcript detail with segments
+              final transcriptDetailResult = await transcriptionRepository
+                  .getTranscriptDetail(transcriptId);
+
+              return await transcriptDetailResult.fold(
+                (failure) => Left(failure),
+                (transcriptDetail) {
+                  return Right(
+                    UploadTranscribeResult(
+                      recordingId: recording.recordingId,
+                      transcriptId: transcriptId,
+                      recording: updatedRecording,
+                      segments: transcriptDetail.segments,
+                    ),
+                  );
+                },
+              );
+            });
+          });
+        });
+      } catch (e) {
+        return Left(ServerFailure('Failed to upload and transcribe: $e'));
       }
     } else {
       return const Left(NetworkFailure('No internet connection'));
@@ -507,7 +724,3 @@ class RecordingRepositoryImpl implements RecordingRepository {
     }
   }
 }
-
-
-
-

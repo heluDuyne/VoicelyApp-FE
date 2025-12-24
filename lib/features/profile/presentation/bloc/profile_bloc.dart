@@ -21,6 +21,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     on<LoadProfile>(_onLoadProfile);
     on<UpdateProfileRequested>(_onUpdateProfile);
     on<UpdateAvatarRequested>(_onUpdateAvatar);
+    on<UpdatePasswordRequested>(_onUpdatePassword);
     on<LogoutRequested>(_onLogout);
   }
 
@@ -47,15 +48,18 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       emit(ProfileUpdating(currentProfile: currentState.profile));
 
       final result = await updateProfile(
+        userId: currentState.profile.id,
         name: event.name,
         email: event.email,
       );
 
       result.fold(
-        (failure) => emit(ProfileError(
-          message: failure.message,
-          previousProfile: currentState.profile,
-        )),
+        (failure) => emit(
+          ProfileError(
+            message: failure.message,
+            previousProfile: currentState.profile,
+          ),
+        ),
         (profile) => emit(ProfileLoaded(profile: profile)),
       );
     }
@@ -72,13 +76,39 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       final result = await repository.updateAvatar(event.imagePath);
 
       result.fold(
-        (failure) => emit(ProfileError(
-          message: failure.message,
-          previousProfile: currentState.profile,
-        )),
+        (failure) => emit(
+          ProfileError(
+            message: failure.message,
+            previousProfile: currentState.profile,
+          ),
+        ),
         (avatarUrl) {
           // Reload profile to get updated data
           add(const LoadProfile());
+        },
+      );
+    }
+  }
+
+  Future<void> _onUpdatePassword(
+    UpdatePasswordRequested event,
+    Emitter<ProfileState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is ProfileLoaded) {
+      emit(ProfileUpdating(currentProfile: currentState.profile));
+
+      final result = await repository.updatePassword(event.newPassword);
+
+      result.fold(
+        (failure) => emit(
+          ProfileError(
+            message: failure.message,
+            previousProfile: currentState.profile,
+          ),
+        ),
+        (_) {
+          emit(ProfileLoaded(profile: currentState.profile));
         },
       );
     }
@@ -96,13 +126,3 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-

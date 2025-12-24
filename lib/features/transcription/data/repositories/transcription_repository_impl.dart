@@ -6,7 +6,6 @@ import '../../domain/repositories/transcription_repository.dart';
 import '../../domain/entities/transcription_request.dart';
 import '../../domain/entities/transcription_response.dart';
 import '../../domain/entities/audio_upload_response.dart';
-import '../../domain/entities/folder.dart';
 import '../../domain/entities/transcript.dart';
 import '../../domain/entities/transcript_segment.dart';
 import '../../domain/entities/recording_speaker.dart';
@@ -147,17 +146,20 @@ class TranscriptionRepositoryImpl implements TranscriptionRepository {
         final response = await remoteDataSource.getTranscriptDetail(
           transcriptId,
         );
-        final transcript = TranscriptModel.fromJson(
-          response['transcript'] as Map<String, dynamic>,
-        );
-        final segments =
-            (response['segments'] as List)
-                .map(
-                  (json) => TranscriptSegmentModel.fromJson(
-                    json as Map<String, dynamic>,
-                  ),
-                )
-                .toList();
+        // TranscriptDetail response has transcript fields at top level + segments array
+        // Extract transcript fields (excluding segments)
+        final transcriptJson = Map<String, dynamic>.from(response);
+        transcriptJson.remove('segments');
+        final transcript = TranscriptModel.fromJson(transcriptJson);
+        
+        // Extract segments array
+        final segments = (response['segments'] as List? ?? [])
+            .map(
+              (json) => TranscriptSegmentModel.fromJson(
+                json as Map<String, dynamic>,
+              ),
+            )
+            .toList();
         return Right(
           TranscriptDetail(transcript: transcript, segments: segments),
         );
@@ -279,97 +281,4 @@ class TranscriptionRepositoryImpl implements TranscriptionRepository {
   }
 
   // Folder management
-  @override
-  Future<Either<Failure, Folder>> createFolder({
-    required String name,
-    String? parentFolderId,
-  }) async {
-    final token = await authLocalDataSource.getAccessToken();
-    if (token == null) {
-      return const Left(UnauthorizedFailure('Please login to create folder'));
-    }
-
-    if (await networkInfo.isConnected) {
-      try {
-        final folder = await remoteDataSource.createFolder(
-          name: name,
-          parentFolderId: parentFolderId,
-        );
-        return Right(folder);
-      } catch (e) {
-        return Left(ServerFailure(e.toString()));
-      }
-    } else {
-      return const Left(NetworkFailure('No internet connection'));
-    }
-  }
-
-  @override
-  Future<Either<Failure, List<Folder>>> getFolders({
-    String? parentFolderId,
-  }) async {
-    final token = await authLocalDataSource.getAccessToken();
-    if (token == null) {
-      return const Left(UnauthorizedFailure('Please login to get folders'));
-    }
-
-    if (await networkInfo.isConnected) {
-      try {
-        final folders = await remoteDataSource.getFolders(
-          parentFolderId: parentFolderId,
-        );
-        return Right(folders);
-      } catch (e) {
-        return Left(ServerFailure(e.toString()));
-      }
-    } else {
-      return const Left(NetworkFailure('No internet connection'));
-    }
-  }
-
-  @override
-  Future<Either<Failure, Folder>> updateFolder({
-    required String folderId,
-    String? name,
-    String? parentFolderId,
-  }) async {
-    final token = await authLocalDataSource.getAccessToken();
-    if (token == null) {
-      return const Left(UnauthorizedFailure('Please login to update folder'));
-    }
-
-    if (await networkInfo.isConnected) {
-      try {
-        final folder = await remoteDataSource.updateFolder(
-          folderId: folderId,
-          name: name,
-          parentFolderId: parentFolderId,
-        );
-        return Right(folder);
-      } catch (e) {
-        return Left(ServerFailure(e.toString()));
-      }
-    } else {
-      return const Left(NetworkFailure('No internet connection'));
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> deleteFolder(String folderId) async {
-    final token = await authLocalDataSource.getAccessToken();
-    if (token == null) {
-      return const Left(UnauthorizedFailure('Please login to delete folder'));
-    }
-
-    if (await networkInfo.isConnected) {
-      try {
-        await remoteDataSource.deleteFolder(folderId);
-        return const Right(null);
-      } catch (e) {
-        return Left(ServerFailure(e.toString()));
-      }
-    } else {
-      return const Left(NetworkFailure('No internet connection'));
-    }
-  }
 }

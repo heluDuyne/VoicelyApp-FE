@@ -5,6 +5,7 @@ class AuditLogModel extends AuditLog {
   const AuditLogModel({
     required int logId,
     required String userId,
+    String? userEmail,
     required String action,
     String? resourceType,
     String? resourceId,
@@ -15,6 +16,7 @@ class AuditLogModel extends AuditLog {
   }) : super(
          logId: logId,
          userId: userId,
+         userEmail: userEmail,
          action: action,
          resourceType: resourceType,
          resourceId: resourceId,
@@ -40,15 +42,20 @@ class AuditLogModel extends AuditLog {
     }
 
     return AuditLogModel(
-      logId: json['log_id'] as int,
-      userId: json['user_id'] as String,
-      action: json['action'] as String,
+      logId: (json['log_id'] as int?) ?? 0,
+      userId: (json['user_id'] as String?) ?? 'System',
+      userEmail: json['user_email'] as String?,
+      action: (json['action'] as String?) ?? 'Unknown',
       resourceType: json['resource_type'] as String?,
       resourceId: json['resource_id'] as String?,
       details: details,
       ipAddress: json['ip_address'] as String?,
       userAgent: json['user_agent'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.tryParse(json['created_at'].toString()) ??
+                  DateTime.now()
+              : DateTime.now(),
     );
   }
 
@@ -56,6 +63,7 @@ class AuditLogModel extends AuditLog {
     return {
       'log_id': logId,
       'user_id': userId,
+      'user_email': userEmail,
       'action': action,
       'resource_type': resourceType,
       'resource_id': resourceId,
@@ -70,6 +78,7 @@ class AuditLogModel extends AuditLog {
     return AuditLogModel(
       logId: entity.logId,
       userId: entity.userId,
+      userEmail: entity.userEmail,
       action: entity.action,
       resourceType: entity.resourceType,
       resourceId: entity.resourceId,
@@ -80,4 +89,3 @@ class AuditLogModel extends AuditLog {
     );
   }
 }
-

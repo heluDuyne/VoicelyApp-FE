@@ -13,7 +13,6 @@ abstract class SummaryRepository {
     bool isCompleted,
   );
 
-  // Recording-based summary methods (new API)
   /// Summarize a recording - POST /recordings/:id/summarize
   Future<Either<Failure, Summary>> summarizeRecording({
     required String recordingId,
@@ -36,5 +35,11 @@ abstract class SummaryRepository {
     String? type,
     bool? isLatest,
   });
+
+  /// Get latest summary for a recording.
+  /// Returns null if no summary exists after generation attempt.
+  Future<Either<Failure, Summary?>> getLatestSummaryForRecording(
+    String recordingId,
+  );
 }
 

@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../auth/domain/entities/user.dart';
 
 enum SubscriptionType { free, premium, pro }
 
@@ -8,6 +9,7 @@ class UserProfile extends Equatable {
   final String email;
   final String? avatarUrl;
   final SubscriptionType subscriptionType;
+  final UserRole role;
   final DateTime? createdAt;
 
   const UserProfile({
@@ -16,6 +18,7 @@ class UserProfile extends Equatable {
     required this.email,
     this.avatarUrl,
     this.subscriptionType = SubscriptionType.free,
+    this.role = UserRole.user,
     this.createdAt,
   });
 
@@ -33,6 +36,13 @@ class UserProfile extends Equatable {
   bool get isPremium => subscriptionType != SubscriptionType.free;
 
   @override
-  List<Object?> get props => [id, name, email, avatarUrl, subscriptionType, createdAt];
+  List<Object?> get props => [
+    id,
+    name,
+    email,
+    avatarUrl,
+    subscriptionType,
+    role,
+    createdAt,
+  ];
 }
-

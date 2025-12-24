@@ -221,5 +221,102 @@ class SummaryRepositoryImpl implements SummaryRepository {
       return const Left(NetworkFailure('No internet connection'));
     }
   }
+
+  @override
+  Future<Either<Failure, Summary?>> getLatestSummaryForRecording(
+    String recordingId,
+  ) async {
+    final token = await authLocalDataSource.getAccessToken();
+    if (token == null) {
+      return const Left(
+        UnauthorizedFailure('Please login to get summary for recording'),
+      );
+    }
+
+    if (await networkInfo.isConnected) {
+      try {
+        // Step 1: Check if summary already exists
+        String? summaryId;
+        try {
+          summaryId = await remoteDataSource.fetchLatestSummaryId(recordingId);
+        } catch (e) {
+          // If fetch fails with auth error, return auth failure
+          if (e.toString().contains('Authentication failed')) {
+            return const Left(
+              UnauthorizedFailure('Authentication failed. Please try again.'),
+            );
+          }
+          // For other errors, continue to try generating
+        }
+        
+        // Step 2: If no summary exists, trigger generation
+        if (summaryId == null) {
+          try {
+            await remoteDataSource.generateSummary(recordingId);
+          } catch (e) {
+            // If generation fails with auth error, return auth failure
+            if (e.toString().contains('Authentication failed') ||
+                e.toString().contains('401')) {
+              return const Left(
+                UnauthorizedFailure('Authentication failed. Please try again.'),
+              );
+            }
+            // For other errors, still try to poll (maybe generation is in progress)
+          }
+
+          // Step 3: Poll for summary with retries (summary generation is async)
+          const maxRetries = 10;
+          const retryDelay = Duration(seconds: 2);
+          
+          for (int attempt = 0; attempt < maxRetries; attempt++) {
+            // Wait before checking (except on first attempt)
+            if (attempt > 0) {
+              await Future.delayed(retryDelay);
+            }
+            
+            try {
+              summaryId = await remoteDataSource.fetchLatestSummaryId(recordingId);
+              if (summaryId != null) {
+                break; // Summary is ready
+              }
+            } catch (e) {
+              // If auth error during polling, return auth failure
+              if (e.toString().contains('Authentication failed') ||
+                  e.toString().contains('401')) {
+                return const Left(
+                  UnauthorizedFailure('Authentication failed. Please try again.'),
+                );
+              }
+              // For other errors, continue polling
+            }
+          }
+
+          // If still no summary after retries, return null
+          if (summaryId == null) {
+            return const Right(null);
+          }
+        }
+
+        // Step 4: Fetch full summary content
+        try {
+          final summaryModel = await remoteDataSource.fetchSummary(summaryId);
+          return Right(summaryModel);
+        } catch (e) {
+          // If auth error when fetching summary, return auth failure
+          if (e.toString().contains('Authentication failed') ||
+              e.toString().contains('401')) {
+            return const Left(
+              UnauthorizedFailure('Authentication failed. Please try again.'),
+            );
+          }
+          return Left(ServerFailure('Failed to fetch summary: $e'));
+        }
+      } catch (e) {
+        return Left(ServerFailure(e.toString()));
+      }
+    } else {
+      return const Left(NetworkFailure('No internet connection'));
+    }
+  }
 }
 

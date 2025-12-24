@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../constants/app_constants.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 
@@ -16,6 +17,15 @@ class NetworkClient {
         receiveTimeout: const Duration(
           milliseconds: AppConstants.receiveTimeout,
         ),
+        followRedirects: true, // Enable automatic redirect following
+        maxRedirects: 5, // Maximum number of redirects to follow
+        validateStatus: (status) {
+          // Allow all status codes from 200-499 EXCEPT 401
+          // 401 must throw DioException to trigger onError interceptor for token refresh
+          if (status == null) return false;
+          if (status == 401) return false;
+          return status >= 200 && status < 500;
+        },
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -37,6 +47,14 @@ class NetworkClient {
               options.headers['Authorization'] = 'Bearer $token';
             }
           }
+
+          // Debug: Log the actual URL being sent
+          if (kDebugMode) {
+            debugPrint('Request URL: ${options.uri}');
+            debugPrint('Base URL: ${options.baseUrl}');
+            debugPrint('Path: ${options.path}');
+          }
+
           handler.next(options);
         },
         onResponse: (response, handler) {

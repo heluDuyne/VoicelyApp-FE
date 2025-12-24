@@ -1,10 +1,10 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
 import '../entities/folder.dart';
-import '../repositories/transcription_repository.dart';
+import '../repositories/folder_repository.dart';
 
 class UpdateFolder {
-  final TranscriptionRepository repository;
+  final FolderRepository repository;
 
   UpdateFolder(this.repository);
 

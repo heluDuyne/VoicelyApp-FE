@@ -1,28 +1,52 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../auth/domain/entities/user.dart';
-import '../../../recording/domain/entities/recording.dart';
+import '../entities/audit_log.dart';
+import '../entities/tier.dart';
+export '../entities/audit_log.dart';
+export '../entities/tier.dart';
 
 abstract class AdminRepository {
-  /// Get users list - GET /admin/users
   Future<Either<Failure, List<User>>> getUsers({
     String? email,
     int? tierId,
     bool? isActive,
+    int? page,
+    int? pageSize,
   });
 
-  /// Update user - PATCH /admin/users/:id
-  Future<Either<Failure, User>> updateUser({
-    required String userId,
+  Future<Either<Failure, User>> updateUser(
+    String userId, {
     int? tierId,
-    bool? isActive,
     String? role,
+    bool? isActive,
   });
 
-  /// Get user recordings - GET /admin/users/:id/recordings
-  Future<Either<Failure, List<Recording>>> getUserRecordings(String userId);
+  Future<Either<Failure, List<Tier>>> getTiers();
 
-  /// Get admin recording detail - GET /admin/recordings/:id
-  Future<Either<Failure, Recording>> getAdminRecordingDetail(String recordingId);
+  Future<Either<Failure, Tier>> createTier({
+    required String name,
+    required double monthlyPrice,
+    required int maxStorageMb,
+    required int maxAiMinutesMonthly,
+  });
+
+  Future<Either<Failure, Tier>> updateTier(
+    int tierId, {
+    String? name,
+    double? monthlyPrice,
+    int? maxStorageMb,
+    int? maxAiMinutesMonthly,
+  });
+
+  Future<Either<Failure, void>> deleteTier(int tierId);
+
+  Future<Either<Failure, List<AuditLog>>> getAuditLogs({
+    String? userId,
+    String? action,
+    DateTime? startDate,
+    DateTime? endDate,
+    int? page,
+    int? pageSize,
+  });
 }
-

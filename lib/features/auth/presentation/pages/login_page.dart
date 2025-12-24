@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/utils/validation_utils.dart';
 import '../bloc/auth_bloc.dart';
+import '../../../summary/presentation/bloc/summary_bloc.dart';
+import '../../../summary/presentation/bloc/summary_event.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -47,6 +49,10 @@ class _LoginPageState extends State<LoginPage> {
               context,
             ).showSnackBar(SnackBar(content: Text(state.message)));
           } else if (state is AuthAuthenticated) {
+            // Auto-fetch data BEFORE navigation
+            context.read<SummaryBloc>().add(const LoadSummariesListEvent());
+            context.read<SummaryBloc>().add(const LoadFoldersEvent());
+            // Then navigate
             context.go(AppRoutes.recording);
           }
         },

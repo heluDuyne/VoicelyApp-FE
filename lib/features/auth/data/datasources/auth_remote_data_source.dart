@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:developer'; // Added for logging
+import 'dart:developer'; 
 import 'package:dio/dio.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/constants/app_constants.dart';
@@ -18,10 +18,10 @@ abstract class AuthRemoteDataSource {
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final Dio dio;
 
-  // Demo/Test account credentials for development
+  // Demo/Test account 
   static const String _demoEmail = 'test@voicely.com';
   static const String _demoPassword = 'password123';
-  static const bool _enableDemoAccount = true; // Set to false in production
+  static const bool _enableDemoAccount = false; 
 
   AuthRemoteDataSourceImpl({required this.dio});
 
@@ -42,8 +42,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     }
 
     try {
-      log('Attempting login with email: $email'); // Log request details
-      // Backend expects JSON body with email and password
+      log('Attempting login with email: $email'); 
       final response = await dio.post(
         AppConstants.loginEndpoint,
         data: {'email': email, 'password': password},
@@ -52,13 +51,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       log('Login response: ${response.data}'); // Log response details
 
       if (response.statusCode == 200) {
-        // Backend returns tokens at top level:
-        // {
-        //   "access_token": "...",
-        //   "refresh_token": "...",
-        //   "token_type": "Bearer",
-        //   "user": {"id": "...", "email": "..."}
-        // }
+        
         final responseData =
             response.data is Map
                 ? Map<String, dynamic>.from(response.data)
@@ -117,9 +110,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           }
 
           if (statusCode == 401) {
-            throw UnauthorizedException('Invalid credentials');
+            throw UnauthorizedException(errorMessage);
           } else if (statusCode == 400 || statusCode == 422) {
-            // 422 is Unprocessable Entity - usually validation errors
+            
             throw ValidationException(errorMessage);
           } else if (statusCode == 500) {
             throw ServerException('Server error: $errorMessage');
@@ -129,7 +122,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
             );
           }
         } else {
-          // No response - network or connection error
+          
           log('DioException without response: ${e.message}');
           throw ServerException(
             'Network error: ${e.message ?? 'Unable to connect to server'}',
@@ -138,7 +131,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       } else if (e is ServerException ||
           e is ValidationException ||
           e is UnauthorizedException) {
-        // Re-throw if already the right exception type
         rethrow;
       } else {
         log(
@@ -156,8 +148,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String password,
   ) async {
     try {
-      log('Attempting signup with email: $email'); // Log request details
-      // Backend expects 'name' not 'full_name', and name is optional
+      log('Attempting signup with email: $email'); 
       final requestData = <String, dynamic>{
         'email': email,
         'password': password,
@@ -166,7 +157,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         requestData['name'] = name;
       }
 
-      log('Signup request data: $requestData'); // Log what we're sending
+      log('Signup request data: $requestData'); 
 
       final response = await dio.post(
         AppConstants.signupEndpoint,
@@ -174,11 +165,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         options: Options(headers: {'Content-Type': 'application/json'}),
       );
 
-      log('Signup response status: ${response.statusCode}'); // Log status code
+      log('Signup response status: ${response.statusCode}'); 
       log(
         'Signup response data type: ${response.data.runtimeType}',
       ); // Log data type
-      log('Signup response data: ${response.data}'); // Log response details
+      log('Signup response data: ${response.data}'); 
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         // Handle different response structures
@@ -200,14 +191,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           log('Unexpected response data type: ${response.data.runtimeType}');
           throw ServerException('Unexpected response format from server');
         }
-
-        // Backend returns tokens at top level after auto-login:
-        // {
-        //   "access_token": "...",
-        //   "refresh_token": "...",
-        //   "token_type": "Bearer",
-        //   "user": {"id": "...", "email": "...", "full_name": "..."}
-        // }
         final accessToken = responseData['access_token'];
         final refreshToken = responseData['refresh_token'];
         final tokenType = responseData['token_type'] ?? 'Bearer';
@@ -219,8 +202,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
             'token_type': tokenType,
           };
         } else {
-          // If no token found, it might mean email confirmation is required
-          // (edge case where auto-login fails due to email confirmation requirement)
           log(
             'Signup response missing access_token. Full response: $responseData',
           );
@@ -240,7 +221,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
               'Please check your email and confirm your account.',
             );
           } else {
-            // If we can't find email, throw generic exception
             throw ServerException(
               'Signup succeeded but backend did not return access token. '
               'You may need to check your email for confirmation. '
@@ -261,13 +241,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           ); // Log error response
           final statusCode = e.response!.statusCode;
 
-          // Extract error message from response
           String errorMessage = 'Unknown error';
           if (e.response!.data is Map) {
-            // FastAPI validation errors are often in 'detail' as a list or string
             final detail = e.response!.data['detail'];
             if (detail is List && detail.isNotEmpty) {
-              // Pydantic validation errors come as a list of error objects
               final errors = detail
                   .map((e) {
                     if (e is Map) {

@@ -1,8 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../../../core/errors/failures.dart';
+import '../../../../core/utils/usecase.dart';
 import '../../domain/usecases/login_user.dart';
 import '../../domain/usecases/signup_user.dart';
+import '../../domain/usecases/logout_user.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
@@ -10,11 +12,16 @@ part 'auth_state.dart';
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUser _loginUser;
   final SignupUser _signupUser;
+  final LogoutUser _logoutUser;
 
-  AuthBloc({required LoginUser loginUser, required SignupUser signupUser})
-    : _loginUser = loginUser,
-      _signupUser = signupUser,
-      super(AuthInitial()) {
+  AuthBloc({
+    required LoginUser loginUser,
+    required SignupUser signupUser,
+    required LogoutUser logoutUser,
+  })  : _loginUser = loginUser,
+        _signupUser = signupUser,
+        _logoutUser = logoutUser,
+        super(AuthInitial()) {
     on<LoginRequested>(_onLoginRequested);
     on<SignupRequested>(_onSignupRequested);
     on<LogoutRequested>(_onLogoutRequested);
@@ -77,14 +84,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     LogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
-    emit(AuthUnauthenticated());
+    emit(AuthLoading());
+    final result = await _logoutUser(NoParams());
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (_) => emit(AuthUnauthenticated()),
+    );
   }
 
   Future<void> _onCheckAuthStatus(
     CheckAuthStatus event,
     Emitter<AuthState> emit,
   ) async {
-    // TODO: Implement check auth status
     emit(AuthUnauthenticated());
   }
 }

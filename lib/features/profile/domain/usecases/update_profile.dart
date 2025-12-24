@@ -9,24 +9,16 @@ class UpdateProfile {
   UpdateProfile(this.repository);
 
   Future<Either<Failure, UserProfile>> call({
+    required String userId,
     String? name,
     String? email,
     String? avatarUrl,
   }) async {
     return await repository.updateProfile(
+      userId: userId,
       name: name,
       email: email,
       avatarUrl: avatarUrl,
     );
   }
 }
-
-
-
-
-
-
-
-
-
-

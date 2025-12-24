@@ -1,12 +1,12 @@
 import 'package:equatable/equatable.dart';
 
 class Tier extends Equatable {
-  final int tierId; // PK - Primary key
-  final String name; // Tier name (e.g., "Free", "Premium", "Pro")
-  final double maxStorageMb; // Storage quota in MB
-  final double maxAiMinutesPerMonth; // AI processing quota
-  final double? pricePerMonth; // Optional pricing
-  final bool isActive; // Whether tier is available
+  final int tierId; 
+  final String name; 
+  final double maxStorageMb; 
+  final double maxAiMinutesPerMonth; 
+  final double? pricePerMonth; 
+  final bool isActive; 
   final DateTime createdAt;
   final DateTime? updatedAt;
 

@@ -25,12 +25,15 @@ class UserModel extends User {
     return UserModel(
       id: json['user_id'] ?? json['id'], // Support both user_id and id
       email: json['email'] as String,
-      fullName: json['full_name'] as String,
-      tierId: json['tier_id'] as int,
+      fullName: (json['full_name'] as String?) ?? 'Unknown',
+      tierId: (json['tier_id'] as int?) ?? 0,
       role: UserRole.fromString(json['role'] as String? ?? 'USER'),
       isActive: json['is_active'] as bool? ?? true,
       storageUsedMb: (json['storage_used_mb'] as num?)?.toDouble() ?? 0.0,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.parse(json['created_at'] as String)
+              : DateTime.now(),
     );
   }
 

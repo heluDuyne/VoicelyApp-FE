@@ -27,6 +27,7 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
     on<ResumeRecordingRequested>(_onResumeRecording);
     on<ImportAudioRequested>(_onImportAudio);
     on<DurationUpdated>(_onDurationUpdated);
+    on<UploadAndTranscribeRecordingRequested>(_onUploadAndTranscribeRecording);
   }
 
   Future<void> _onStartRecording(
@@ -123,12 +124,51 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
     }
   }
 
+  Future<void> _onUploadAndTranscribeRecording(
+    UploadAndTranscribeRecordingRequested event,
+    Emitter<RecordingState> emit,
+  ) async {
+    try {
+      // Step 1: Creating recording metadata
+      emit(const CreatingRecording());
+      
+      final result = await repository.uploadAndTranscribeRecording(
+        audioFile: event.audioFile,
+        title: event.title,
+        userId: event.userId,
+        folderId: event.folderId,
+      );
+
+      result.fold(
+        (failure) => emit(RecordingError(
+          message: failure.message,
+          step: 'Upload and transcribe',
+        )),
+        (uploadResult) {
+          // All steps completed successfully
+          emit(UploadComplete(
+            recordingId: uploadResult.recordingId,
+            transcriptId: uploadResult.transcriptId,
+            recording: uploadResult.recording,
+            segments: uploadResult.segments,
+          ));
+        },
+      );
+    } catch (e) {
+      emit(RecordingError(
+        message: 'Unexpected error: $e',
+        step: 'Upload and transcribe',
+      ));
+    }
+  }
+
   @override
   Future<void> close() {
     _durationSubscription?.cancel();
     return super.close();
   }
 }
+
 
 
 

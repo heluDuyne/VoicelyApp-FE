@@ -57,13 +57,18 @@ class RecordingModel extends Recording {
 
   factory RecordingModel.fromJson(Map<String, dynamic> json) {
     return RecordingModel(
-      recordingId: json['recording_id'] as String,
-      userId: json['user_id'] as String,
+      recordingId: json['recording_id'] as String? ?? '',
+      userId: json['user_id'] as String? ?? '',
       folderId: json['folder_id'] as String?,
-      title: json['title'] as String,
-      filePath: json['file_path'] as String,
-      durationSeconds: (json['duration_seconds'] as num).toDouble(),
-      fileSizeMb: (json['file_size_mb'] as num).toDouble(),
+      title: json['title'] as String? ?? '',
+      // file_path, duration_seconds, and file_size_mb can be null when recording is first created
+      filePath: json['file_path'] as String? ?? '',
+      durationSeconds: json['duration_seconds'] != null
+          ? (json['duration_seconds'] as num).toDouble()
+          : 0.0,
+      fileSizeMb: json['file_size_mb'] != null
+          ? (json['file_size_mb'] as num).toDouble()
+          : 0.0,
       status: RecordingStatus.fromString(
         json['status'] as String? ?? 'UPLOADING',
       ),
@@ -77,7 +82,9 @@ class RecordingModel extends Recording {
           json['last_play_position'] != null
               ? (json['last_play_position'] as num).toDouble()
               : null,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
       deletedAt:
           json['deleted_at'] != null
               ? DateTime.parse(json['deleted_at'] as String)
@@ -105,6 +112,8 @@ class RecordingModel extends Recording {
     };
   }
 }
+
+
 
 
 

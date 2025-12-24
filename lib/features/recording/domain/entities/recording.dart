@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-// Local recording session states (for UI/recording session management)
+// Local recording session states 
 enum LocalRecordingState { idle, recording, paused, completed }
 
 enum RecordingStatus {
@@ -124,6 +124,8 @@ class Recording extends Equatable {
     deletedAt,
   ];
 }
+
+
 
 
 

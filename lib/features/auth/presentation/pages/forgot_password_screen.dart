@@ -26,7 +26,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _isLoading = true;
       });
       // TODO: Implement forgot password logic with AuthBloc
-      // For now, just show a success message after a delay
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
           setState(() {

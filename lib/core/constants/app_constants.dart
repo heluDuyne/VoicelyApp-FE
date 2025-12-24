@@ -1,9 +1,6 @@
 class AppConstants {
   // API
-  static const String baseUrl =
-      //'https://congregational-bula-coaxingly.ngrok-free.dev';
-      'http://10.0.2.2:8000';
-  // static const String apiVersion = '/v1'; // Commented out API version prefix
+  static const String baseUrl = 'http://10.0.2.2:8000';
 
   // Endpoints - Health & Auth
   static const String healthEndpoint = '/health';
@@ -13,7 +10,7 @@ class AppConstants {
   static const String authMeEndpoint = '/auth/me';
 
   // Endpoints - Recordings
-  static const String recordingsEndpoint = '/recordings';
+  static const String recordingsEndpoint = '/recordings/';
   static const String recordingsCompleteUploadEndpoint =
       '/recordings/:id/complete-upload';
   static const String recordingsRestoreEndpoint = '/recordings/:id/restore';
@@ -21,21 +18,21 @@ class AppConstants {
       '/recordings/:id/hard-delete';
 
   // Endpoints - Folders
-  static const String foldersEndpoint = '/folders';
+  static const String foldersEndpoint = '/folders/';
   
   // Endpoints - Transcription
   static const String recordingsTranscribeEndpoint =
       '/recordings/:id/transcribe';
   static const String recordingsTranscriptsEndpoint =
       '/recordings/:id/transcripts';
-  static const String transcriptsEndpoint = '/transcripts';
+  static const String transcriptsEndpoint = '/transcripts/';
   static const String transcriptsSegmentsEndpoint =
       '/transcripts/:transcript_id/segments/:segment_id';
 
   // Endpoints - Summaries
   static const String recordingsSummarizeEndpoint = '/recordings/:id/summarize';
   static const String recordingsSummariesEndpoint = '/recordings/:id/summaries';
-  static const String summariesEndpoint = '/summaries';
+  static const String summariesEndpoint = '/summaries/';
 
   // Endpoints - Speakers
   static const String recordingsSpeakersEndpoint = '/recordings/:id/speakers';

@@ -1,12 +1,12 @@
 import 'package:equatable/equatable.dart';
 
 class SystemConfig extends Equatable {
-  final String configKey; // PK - Unique key identifier
-  final String configValue; // Configuration value
-  final String? description; // Optional description
-  final bool isSensitive; // Whether value should be masked in UI
-  final DateTime updatedAt; // Last modification timestamp
-  final String? updatedBy; // User ID who last updated
+  final String configKey; 
+  final String configValue; 
+  final String? description; 
+  final bool isSensitive; 
+  final DateTime updatedAt; 
+  final String? updatedBy; 
 
   const SystemConfig({
     required this.configKey,

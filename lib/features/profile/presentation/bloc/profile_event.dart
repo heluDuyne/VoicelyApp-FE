@@ -34,12 +34,11 @@ class LogoutRequested extends ProfileEvent {
   const LogoutRequested();
 }
 
+class UpdatePasswordRequested extends ProfileEvent {
+  final String newPassword;
 
+  const UpdatePasswordRequested({required this.newPassword});
 
-
-
-
-
-
-
-
+  @override
+  List<Object?> get props => [newPassword];
+}

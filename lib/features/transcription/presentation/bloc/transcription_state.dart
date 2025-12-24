@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/audio_upload_response.dart';
 import '../../domain/entities/transcription_response.dart';
+import '../../domain/usecases/get_transcript_detail.dart';
+import '../../domain/entities/recording_speaker.dart';
 
 abstract class TranscriptionState extends Equatable {
   const TranscriptionState();
@@ -38,4 +40,17 @@ class TranscriptionError extends TranscriptionState {
 
   @override
   List<Object> get props => [message];
+}
+
+class TranscriptDetailLoaded extends TranscriptionState {
+  final TranscriptDetail transcriptDetail;
+  final List<RecordingSpeaker> speakers;
+
+  const TranscriptDetailLoaded({
+    required this.transcriptDetail,
+    required this.speakers,
+  });
+
+  @override
+  List<Object> get props => [transcriptDetail, speakers];
 }

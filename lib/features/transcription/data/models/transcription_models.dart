@@ -1,4 +1,3 @@
-import '../../domain/entities/folder.dart';
 import '../../domain/entities/transcript.dart';
 import '../../domain/entities/transcript_segment.dart';
 import '../../domain/entities/recording_speaker.dart';
@@ -153,53 +152,6 @@ class TranscriptionWordModel extends TranscriptionWord {
   }
 }
 
-class FolderModel extends Folder {
-  const FolderModel({
-    required String folderId,
-    required String userId,
-    required String name,
-    String? parentFolderId,
-    required bool isDeleted,
-    DateTime? deletedAt,
-    required DateTime createdAt,
-  }) : super(
-         folderId: folderId,
-         userId: userId,
-         name: name,
-         parentFolderId: parentFolderId,
-         isDeleted: isDeleted,
-         deletedAt: deletedAt,
-         createdAt: createdAt,
-       );
-
-  factory FolderModel.fromJson(Map<String, dynamic> json) {
-    return FolderModel(
-      folderId: json['folder_id'] as String,
-      userId: json['user_id'] as String,
-      name: json['name'] as String,
-      parentFolderId: json['parent_folder_id'] as String?,
-      isDeleted: json['is_deleted'] as bool? ?? false,
-      deletedAt:
-          json['deleted_at'] != null
-              ? DateTime.parse(json['deleted_at'] as String)
-              : null,
-      createdAt: DateTime.parse(json['created_at'] as String),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'folder_id': folderId,
-      'user_id': userId,
-      'name': name,
-      'parent_folder_id': parentFolderId,
-      'is_deleted': isDeleted,
-      'deleted_at': deletedAt?.toIso8601String(),
-      'created_at': createdAt.toIso8601String(),
-    };
-  }
-}
-
 class TranscriptModel extends Transcript {
   const TranscriptModel({
     required String transcriptId,
@@ -207,21 +159,37 @@ class TranscriptModel extends Transcript {
     required String language,
     required double confidenceScore,
     required DateTime createdAt,
+    int? versionNo,
+    String? type,
+    bool? isActive,
   }) : super(
          transcriptId: transcriptId,
          recordingId: recordingId,
          language: language,
          confidenceScore: confidenceScore,
          createdAt: createdAt,
+         versionNo: versionNo,
+         type: type,
+         isActive: isActive,
        );
 
   factory TranscriptModel.fromJson(Map<String, dynamic> json) {
+    // Handle both 'id' and 'transcript_id' for transcript ID
+    final transcriptId = json['id'] as String? ?? 
+                         json['transcript_id'] as String? ?? 
+                         '';
+    
     return TranscriptModel(
-      transcriptId: json['transcript_id'] as String,
-      recordingId: json['recording_id'] as String,
-      language: json['language'] as String,
-      confidenceScore: (json['confidence_score'] as num).toDouble(),
-      createdAt: DateTime.parse(json['created_at'] as String),
+      transcriptId: transcriptId,
+      recordingId: json['recording_id'] as String? ?? '',
+      language: json['language'] as String? ?? 'en',
+      confidenceScore: (json['confidence_score'] as num?)?.toDouble() ?? 0.0,
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
+      versionNo: json['version_no'] as int?,
+      type: json['type'] as String?,
+      isActive: json['is_active'] as bool?,
     );
   }
 
@@ -232,6 +200,9 @@ class TranscriptModel extends Transcript {
       'language': language,
       'confidence_score': confidenceScore,
       'created_at': createdAt.toIso8601String(),
+      if (versionNo != null) 'version_no': versionNo,
+      if (type != null) 'type': type,
+      if (isActive != null) 'is_active': isActive,
     };
   }
 }
@@ -244,6 +215,8 @@ class TranscriptSegmentModel extends TranscriptSegment {
     required double endTime,
     required String content,
     required String speakerLabel,
+    int? sequence,
+    bool? isUserEdited,
   }) : super(
          segmentId: segmentId,
          transcriptId: transcriptId,
@@ -251,16 +224,20 @@ class TranscriptSegmentModel extends TranscriptSegment {
          endTime: endTime,
          content: content,
          speakerLabel: speakerLabel,
+         sequence: sequence,
+         isUserEdited: isUserEdited,
        );
 
   factory TranscriptSegmentModel.fromJson(Map<String, dynamic> json) {
     return TranscriptSegmentModel(
       segmentId: json['segment_id'] as int,
-      transcriptId: json['transcript_id'] as String,
+      transcriptId: json['transcript_id'] as String? ?? '',
       startTime: (json['start_time'] as num).toDouble(),
       endTime: (json['end_time'] as num).toDouble(),
       content: json['content'] as String,
-      speakerLabel: json['speaker_label'] as String,
+      speakerLabel: json['speaker_label'] as String? ?? 'UNKNOWN',
+      sequence: json['sequence'] as int?,
+      isUserEdited: json['is_user_edited'] as bool?,
     );
   }
 
@@ -272,6 +249,8 @@ class TranscriptSegmentModel extends TranscriptSegment {
       'end_time': endTime,
       'content': content,
       'speaker_label': speakerLabel,
+      if (sequence != null) 'sequence': sequence,
+      if (isUserEdited != null) 'is_user_edited': isUserEdited,
     };
   }
 }

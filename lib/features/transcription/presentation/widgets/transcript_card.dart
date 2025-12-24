@@ -235,3 +235,5 @@ class TranscriptCardWithDuration extends StatelessWidget {
 
 
 
+
+

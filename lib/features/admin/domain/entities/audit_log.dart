@@ -1,19 +1,21 @@
 import 'package:equatable/equatable.dart';
 
 class AuditLog extends Equatable {
-  final int logId; // PK, bigint - Primary key
-  final String userId; // FK - User who performed action
-  final String action; // Action type (e.g., "UPLOAD", "DELETE", "LOGIN")
-  final String? resourceType; // Resource type (e.g., "RECORDING", "TRANSCRIPT")
-  final String? resourceId; // ID of affected resource
-  final Map<String, dynamic>? details; // Additional context as JSON
-  final String? ipAddress; // User's IP address
-  final String? userAgent; // Browser/client info
-  final DateTime createdAt; // When action occurred
+  final int logId; 
+  final String userId; 
+  final String? userEmail;
+  final String action; 
+  final String? resourceType; 
+  final String? resourceId; 
+  final Map<String, dynamic>? details; 
+  final String? ipAddress; 
+  final String? userAgent; 
+  final DateTime createdAt; 
 
   const AuditLog({
     required this.logId,
     required this.userId,
+    this.userEmail,
     required this.action,
     this.resourceType,
     this.resourceId,
@@ -26,6 +28,7 @@ class AuditLog extends Equatable {
   AuditLog copyWith({
     int? logId,
     String? userId,
+    String? userEmail,
     String? action,
     String? resourceType,
     String? resourceId,
@@ -37,6 +40,7 @@ class AuditLog extends Equatable {
     return AuditLog(
       logId: logId ?? this.logId,
       userId: userId ?? this.userId,
+      userEmail: userEmail ?? this.userEmail,
       action: action ?? this.action,
       resourceType: resourceType ?? this.resourceType,
       resourceId: resourceId ?? this.resourceId,
@@ -51,6 +55,7 @@ class AuditLog extends Equatable {
   List<Object?> get props => [
     logId,
     userId,
+    userEmail,
     action,
     resourceType,
     resourceId,
@@ -60,4 +65,3 @@ class AuditLog extends Equatable {
     createdAt,
   ];
 }
-

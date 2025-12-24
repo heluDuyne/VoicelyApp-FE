@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/network/network_info.dart';
+import '../../../../core/supabase/supabase_client.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_data_source.dart';
@@ -27,6 +28,14 @@ class AuthRepositoryImpl implements AuthRepository {
       try {
         final tokens = await remoteDataSource.login(email, password);
         await localDataSource.cacheTokens(tokens);
+        
+        // Sync Supabase auth state to enable authenticated storage operations
+        try {
+          await SupabaseClient.instance.syncAuthState();
+        } catch (e) {
+          print('Warning: Failed to sync Supabase auth state after login: $e');
+        }
+        
         return Right(tokens);
       } on ServerException catch (e) {
         return Left(ServerFailure(e.message));
@@ -50,6 +59,14 @@ class AuthRepositoryImpl implements AuthRepository {
       try {
         final tokens = await remoteDataSource.signup(name, email, password);
         await localDataSource.cacheTokens(tokens);
+        
+        try {
+          await SupabaseClient.instance.syncAuthState();
+        } catch (e) {
+          // Log but don't fail signup if Supabase sync fails
+          print('Warning: Failed to sync Supabase auth state after signup: $e');
+        }
+        
         return Right(tokens);
       } on ServerException catch (e) {
         return Left(ServerFailure(e.message));
@@ -105,6 +122,15 @@ class AuthRepositoryImpl implements AuthRepository {
       try {
         final tokens = await remoteDataSource.refresh(refreshToken);
         await localDataSource.cacheTokens(tokens);
+        
+        // Sync Supabase auth state after token refresh
+        try {
+          await SupabaseClient.instance.syncAuthState();
+        } catch (e) {
+          // Log but don't fail refresh if Supabase sync fails
+          print('Warning: Failed to sync Supabase auth state after refresh: $e');
+        }
+        
         return Right(tokens);
       } on ServerException catch (e) {
         return Left(ServerFailure(e.message));

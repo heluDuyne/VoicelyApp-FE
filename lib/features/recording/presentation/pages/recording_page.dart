@@ -1,7 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+// TODO: Uncomment when waveform package API is confirmed
+// import 'package:flutter_audio_waveforms/flutter_audio_waveforms.dart';
 import '../../../../core/routes/app_router.dart';
+import '../../../../injection_container/injection_container.dart' as di;
+import '../../../auth/data/datasources/auth_local_data_source.dart';
 import '../bloc/recording_bloc.dart';
 import '../bloc/recording_event.dart';
 import '../bloc/recording_state.dart';
@@ -12,33 +17,108 @@ class RecordingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocListener<RecordingBloc, RecordingState>(
-      listener: (context, state) {
+      listener: (context, state) async {
         if (state is RecordingError) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(state.message)));
         } else if (state is RecordingCompleted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Recording saved: ${state.recording.title}'),
+          // Get user ID from auth
+          final authLocalDataSource = di.sl<AuthLocalDataSource>();
+          final user = await authLocalDataSource.getCachedUser();
+          final userId = user?.id ?? 'user_001'; // Fallback if no user
+
+          // Get the audio file from the recording
+          final audioFile = File(state.recording.filePath);
+          
+          // Check if file exists
+          if (!await audioFile.exists()) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Error: Recording file not found'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+
+          // Upload and transcribe the recorded audio
+          context.read<RecordingBloc>().add(
+            UploadAndTranscribeRecordingRequested(
+              audioFile: audioFile,
+              title: state.recording.title,
+              userId: userId,
+              folderId: state.recording.folderId,
             ),
           );
-          // Navigate to transcription page
-          context.push(
-            '${AppRoutes.transcription}?title=${Uri.encodeComponent(state.recording.title)}',
-          );
         } else if (state is AudioImported) {
+          // Get user ID from auth
+          final authLocalDataSource = di.sl<AuthLocalDataSource>();
+          final user = await authLocalDataSource.getCachedUser();
+          final userId = user?.id ?? 'user_001'; // Fallback if no user
+
+          // Upload and transcribe the imported audio
+          final fileName = state.audioFile.path.split('/').last;
+          final title = fileName.replaceAll(
+            RegExp(r'\.[^.]+$'),
+            '',
+          ); // Remove extension
+
+          context.read<RecordingBloc>().add(
+            UploadAndTranscribeRecordingRequested(
+              audioFile: state.audioFile,
+              title: title,
+              userId: userId,
+            ),
+          );
+        } else if (state is RecordingTranscribed) {
+          // Navigate to transcription page with transcriptId
+          context.push(
+            '${AppRoutes.transcription}?title=${Uri.encodeComponent(state.recording.title)}&transcriptId=${state.transcriptId}',
+          );
+        } else if (state is UploadComplete) {
+          // Verify recordingId is valid before navigation
+          if (state.recordingId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Error: Recording ID is missing'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+
+          // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Audio imported: ${state.audioFile.path.split('/').last}',
+                'Upload and transcription completed: ${state.recording.title}',
               ),
+              backgroundColor: const Color(0xFF10B981),
+              duration: const Duration(seconds: 2),
             ),
           );
-          // Navigate to transcription page
-          final fileName = state.audioFile.path.split('/').last;
-          context.push(
-            '${AppRoutes.transcription}?title=${Uri.encodeComponent(fileName)}',
+
+          // Navigate automatically to transcription page after successful upload
+          // Using context.mounted check to ensure widget is still in tree
+          if (context.mounted) {
+            // Small delay to ensure snackbar is visible before navigation
+            await Future.delayed(const Duration(milliseconds: 500));
+            
+            if (context.mounted) {
+              context.push(
+                '${AppRoutes.transcription}?title=${Uri.encodeComponent(state.recording.title)}&recordingId=${state.recordingId}',
+              );
+            }
+          }
+        } else if (state is UploadingRecording ||
+            state is TranscribingRecording) {
+          // Show loading indicator
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Uploading and transcribing...'),
+              duration: Duration(seconds: 2),
+            ),
           );
         }
       },
@@ -47,8 +127,28 @@ class RecordingPage extends StatelessWidget {
   }
 }
 
-class _RecordingPageContent extends StatelessWidget {
+class _RecordingPageContent extends StatefulWidget {
   const _RecordingPageContent();
+
+  @override
+  State<_RecordingPageContent> createState() => _RecordingPageContentState();
+}
+
+class _RecordingPageContentState extends State<_RecordingPageContent> {
+  // TODO: Initialize waveform controller when package API is confirmed
+  // RecorderController? _recorderController;
+
+  @override
+  void initState() {
+    super.initState();
+    // _recorderController = RecorderController();
+  }
+
+  @override
+  void dispose() {
+    // _recorderController?.dispose();
+    super.dispose();
+  }
 
   void _onImportPressed(BuildContext context) {
     context.read<RecordingBloc>().add(const ImportAudioRequested());
@@ -56,10 +156,13 @@ class _RecordingPageContent extends StatelessWidget {
 
   void _onRecordPressed(BuildContext context, RecordingState state) {
     if (state is RecordingInProgress) {
+      // _recorderController?.stopRecorder();
       context.read<RecordingBloc>().add(const StopRecordingRequested());
     } else if (state is RecordingPaused) {
+      // _recorderController?.resumeRecording();
       context.read<RecordingBloc>().add(const ResumeRecordingRequested());
     } else {
+      // _recorderController?.startRecorder();
       context.read<RecordingBloc>().add(const StartRecordingRequested());
     }
   }
@@ -188,6 +291,32 @@ class _RecordingPageContent extends StatelessWidget {
                             ),
                             textAlign: TextAlign.center,
                           ),
+                        // Waveform visualization
+                        // TODO: Uncomment when waveform package API is confirmed
+                        // if (isRecording || isPaused) ...[
+                        //   const SizedBox(height: 32),
+                        //   Container(
+                        //     height: 80,
+                        //     margin: const EdgeInsets.symmetric(horizontal: 24),
+                        //     child: RecorderWaveform(
+                        //       controller: _recorderController!,
+                        //       waveformType: WaveformType.long,
+                        //       waveformData: const [],
+                        //       decoration: BoxDecoration(
+                        //         color: const Color(0xFF282E39),
+                        //         borderRadius: BorderRadius.circular(12),
+                        //       ),
+                        //       padding: const EdgeInsets.all(12),
+                        //       waveStyle: WaveStyle(
+                        //         waveColor: isRecording
+                        //             ? const Color(0xFF3B82F6)
+                        //             : Colors.grey[600]!,
+                        //         extendWaveform: true,
+                        //         showMiddleLine: false,
+                        //       ),
+                        //     ),
+                        //   ),
+                        // ],
                       ],
                     );
                   },

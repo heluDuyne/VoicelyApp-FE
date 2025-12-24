@@ -5,13 +5,21 @@ import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_screen.dart';
 import '../../features/landing/presentation/pages/landing_page.dart';
 import '../../features/recording/presentation/pages/recording_page.dart';
-import '../../features/transcription/presentation/pages/transcript_list_screen.dart';
-import '../../features/transcription/presentation/pages/add_folder_screen.dart';
+import '../../features/folder/presentation/pages/summary_list_screen.dart';
+import '../../features/folder/presentation/pages/add_folder_screen.dart';
 import '../../features/profile/presentation/pages/profile_screen.dart';
 import '../../features/profile/presentation/pages/edit_profile_screen.dart';
 import '../../features/test/presentation/pages/test_screen.dart';
 import '../../features/transcription/presentation/pages/transcription_page.dart';
 import '../../features/summary/presentation/pages/summary_page.dart';
+import '../../features/summary/presentation/pages/summary_screen.dart';
+import '../../features/folder/presentation/pages/folder_detail_screen.dart';
+import '../../features/folder/presentation/pages/edit_folder_screen.dart';
+import '../../features/summary/presentation/pages/trash_screen.dart';
+import '../../features/admin/presentation/pages/admin_dashboard_screen.dart';
+import '../../features/admin/presentation/pages/user_management_screen.dart';
+import '../../features/admin/presentation/pages/tier_management_screen.dart';
+import '../../features/admin/presentation/pages/audit_log_screen.dart';
 
 class AppRoutes {
   static const String landing = '/';
@@ -27,6 +35,13 @@ class AppRoutes {
   static const String transcriptionResult = '/transcription-result';
   static const String transcription = '/transcription';
   static const String summary = '/summary';
+  static const String folderDetail = '/folder-detail';
+  static const String editFolder = '/edit-folder';
+  static const String trash = '/trash';
+  static const String adminDashboard = '/admin';
+  static const String adminUsers = '/admin/users';
+  static const String adminTiers = '/admin/tiers';
+  static const String adminAuditLogs = '/admin/audit-logs';
 }
 
 final GoRouter appRouter = GoRouter(
@@ -60,7 +75,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.transcriptList,
       name: 'transcriptList',
-      builder: (context, state) => const TranscriptListScreen(),
+      builder: (context, state) => const SummaryListScreen(),
     ),
     GoRoute(
       path: AppRoutes.addFolder,
@@ -87,7 +102,13 @@ final GoRouter appRouter = GoRouter(
       name: 'transcription',
       builder: (context, state) {
         final meetingTitle = state.uri.queryParameters['title'];
-        return TranscriptionPage(meetingTitle: meetingTitle);
+        final transcriptId = state.uri.queryParameters['transcriptId'];
+        final recordingId = state.uri.queryParameters['recordingId'];
+        return TranscriptionPage(
+          meetingTitle: meetingTitle,
+          transcriptId: transcriptId,
+          recordingId: recordingId,
+        );
       },
     ),
     GoRoute(
@@ -96,11 +117,66 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final meetingTitle = state.uri.queryParameters['title'];
         final transcriptionId = state.uri.queryParameters['transcriptionId'];
-        return SummaryPage(
-          meetingTitle: meetingTitle,
-          transcriptionId: transcriptionId,
-        );
+        final recordingId = state.uri.queryParameters['recordingId'];
+
+        // Use new SummaryScreen if recordingId is provided, otherwise use legacy SummaryPage
+        if (recordingId != null) {
+          return SummaryScreen(
+            recordingId: recordingId,
+            meetingTitle: meetingTitle,
+          );
+        } else {
+          return SummaryPage(
+            meetingTitle: meetingTitle,
+            transcriptionId: transcriptionId,
+          );
+        }
       },
+    ),
+    GoRoute(
+      path: AppRoutes.folderDetail,
+      name: 'folderDetail',
+      builder: (context, state) {
+        final extras = state.extra as Map<String, dynamic>;
+        final folderId = extras['id'] as String;
+        final folderName = extras['name'] as String;
+        return FolderDetailScreen(folderId: folderId, folderName: folderName);
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.editFolder,
+      name: 'editFolder',
+      builder: (context, state) {
+        final extras = state.extra as Map<String, dynamic>;
+        final folderId = extras['id'] as String;
+        final currentName = extras['name'] as String;
+        return EditFolderScreen(folderId: folderId, currentName: currentName);
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.trash,
+      name: 'trash',
+      builder: (context, state) => const TrashScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.adminDashboard,
+      name: 'adminDashboard',
+      builder: (context, state) => const AdminDashboardScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.adminUsers,
+      name: 'adminUsers',
+      builder: (context, state) => const UserManagementScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.adminTiers,
+      name: 'adminTiers',
+      builder: (context, state) => const TierManagementScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.adminAuditLogs,
+      name: 'adminAuditLogs',
+      builder: (context, state) => const AuditLogScreen(),
     ),
   ],
   errorBuilder:

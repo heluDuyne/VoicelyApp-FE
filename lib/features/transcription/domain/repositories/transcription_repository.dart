@@ -4,7 +4,6 @@ import '../../../../core/errors/failures.dart';
 import '../entities/audio_upload_response.dart';
 import '../entities/transcription_request.dart';
 import '../entities/transcription_response.dart';
-import '../entities/folder.dart';
 import '../entities/transcript.dart';
 import '../entities/transcript_segment.dart';
 import '../entities/recording_speaker.dart';
@@ -54,17 +53,4 @@ abstract class TranscriptionRepository {
     String? displayName,
     String? color,
   });
-
-  // Folder management
-  Future<Either<Failure, Folder>> createFolder({
-    required String name,
-    String? parentFolderId,
-  });
-  Future<Either<Failure, List<Folder>>> getFolders({String? parentFolderId});
-  Future<Either<Failure, Folder>> updateFolder({
-    required String folderId,
-    String? name,
-    String? parentFolderId,
-  });
-  Future<Either<Failure, void>> deleteFolder(String folderId);
 }

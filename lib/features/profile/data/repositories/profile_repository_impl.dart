@@ -52,6 +52,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<Either<Failure, UserProfile>> updateProfile({
+    required String userId,
     String? name,
     String? email,
     String? avatarUrl,
@@ -68,6 +69,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
       final profile = await remoteDataSource.updateProfile(
         accessToken: accessToken,
+        userId: userId,
         name: name,
         email: email,
         avatarUrl: avatarUrl,
@@ -118,5 +120,20 @@ class ProfileRepositoryImpl implements ProfileRepository {
       return Left(ServerFailure('Failed to logout: $e'));
     }
   }
-}
 
+  @override
+  Future<Either<Failure, void>> updatePassword(String newPassword) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure('No internet connection'));
+    }
+
+    try {
+      await remoteDataSource.updatePassword(newPassword: newPassword);
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure('Failed to update password: $e'));
+    }
+  }
+}

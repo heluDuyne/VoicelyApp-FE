@@ -49,30 +49,60 @@ class ContentStructure extends Equatable {
   }
 
   factory ContentStructure.fromJson(Map<String, dynamic> json) {
+    // Parse key_points
+    final keyPoints =
+        (json['key_points'] as List<dynamic>?)
+            ?.map((e) => e as String)
+            .toList() ??
+        [];
+
+    // Parse action_items - handle both List<String> and List<Map> formats
+    List<ActionItem> actionItems = [];
+    final actionItemsRaw = json['action_items'] as List<dynamic>?;
+    if (actionItemsRaw != null) {
+      actionItems =
+          actionItemsRaw.map((e) {
+            if (e is String) {
+              // If it's a String, create a minimal ActionItem
+              return ActionItem(
+                id: '', // No ID for string format
+                text: e,
+                assignedToId: '',
+                assignedToName: '',
+                assignedToInitials: '',
+                assignedToColorValue: 0xFF6B7280, // Default grey color
+                isCompleted: false,
+              );
+            } else if (e is Map<String, dynamic>) {
+              // If it's a Map, parse as existing ActionItem format
+              return ActionItem(
+                id: e['id'] as String? ?? '',
+                text: e['text'] as String? ?? '',
+                assignedToId: e['assigned_to_id'] as String? ?? '',
+                assignedToName: e['assigned_to_name'] as String? ?? '',
+                assignedToInitials: e['assigned_to_initials'] as String? ?? '',
+                assignedToColorValue: e['assigned_to_color_value'] as int? ?? 0,
+                isCompleted: e['is_completed'] as bool? ?? false,
+              );
+            } else {
+              // Fallback: try to convert to string
+              return ActionItem(
+                id: '',
+                text: e.toString(),
+                assignedToId: '',
+                assignedToName: '',
+                assignedToInitials: '',
+                assignedToColorValue: 0xFF6B7280,
+                isCompleted: false,
+              );
+            }
+          }).toList();
+    }
+
     return ContentStructure(
       overview: json['overview'] as String? ?? '',
-      keyPoints:
-          (json['key_points'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          [],
-      actionItems:
-          (json['action_items'] as List<dynamic>?)
-              ?.map(
-                (e) => ActionItem(
-                  id: e['id'] as String? ?? '',
-                  text: e['text'] as String? ?? '',
-                  assignedToId: e['assigned_to_id'] as String? ?? '',
-                  assignedToName: e['assigned_to_name'] as String? ?? '',
-                  assignedToInitials:
-                      e['assigned_to_initials'] as String? ?? '',
-                  assignedToColorValue:
-                      e['assigned_to_color_value'] as int? ?? 0,
-                  isCompleted: e['is_completed'] as bool? ?? false,
-                ),
-              )
-              .toList() ??
-          [],
+      keyPoints: keyPoints,
+      actionItems: actionItems,
     );
   }
 
