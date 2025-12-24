@@ -63,3 +63,7 @@ class UploadAndTranscribeRecordingRequested extends RecordingEvent {
   @override
   List<Object?> get props => [audioFile, title, userId, folderId];
 }
+
+class ResetRecordingEvent extends RecordingEvent {
+  const ResetRecordingEvent();
+}

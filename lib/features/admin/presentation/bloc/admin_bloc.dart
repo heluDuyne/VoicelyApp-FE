@@ -14,6 +14,11 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     on<UpdateTierEvent>(_onUpdateTier);
     on<DeleteTierEvent>(_onDeleteTier);
     on<LoadAuditLogsEvent>(_onLoadAuditLogs);
+    on<ResetAdminEvent>(_onReset);
+  }
+
+  void _onReset(ResetAdminEvent event, Emitter<AdminState> emit) {
+    emit(AdminInitial());
   }
 
   void _onLoadUsers(LoadUsersEvent event, Emitter<AdminState> emit) async {

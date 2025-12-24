@@ -30,6 +30,12 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
     on<ImportAudioRequested>(_onImportAudio);
     on<DurationUpdated>(_onDurationUpdated);
     on<UploadAndTranscribeRecordingRequested>(_onUploadAndTranscribeRecording);
+    on<ResetRecordingEvent>(_onReset);
+  }
+
+  void _onReset(ResetRecordingEvent event, Emitter<RecordingState> emit) {
+    _durationSubscription?.cancel();
+    emit(const RecordingInitial());
   }
 
   Future<void> _onStartRecording(

@@ -81,3 +81,5 @@ class LoadAuditLogsEvent extends AdminEvent {
     this.page,
   });
 }
+
+class ResetAdminEvent extends AdminEvent {}
