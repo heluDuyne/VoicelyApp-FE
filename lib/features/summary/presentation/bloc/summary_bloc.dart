@@ -335,7 +335,7 @@ class SummaryBloc extends Bloc<SummaryEvent, SummaryState> {
     _cachedSummariesList = null;
     _cachedAllSummariesList = null;
     _cachedFolders = null;
-    add(const LoadSummariesListEvent());
+    add(const LoadSummariesListEvent(forceRefresh: true));
     add(const LoadFoldersEvent());
   }
 
@@ -529,12 +529,6 @@ class SummaryBloc extends Bloc<SummaryEvent, SummaryState> {
         folderId: event.folderId,
       ),
     );
-
-    _cachedSummariesList = null;
-    _cachedAllSummariesList = null;
-    _cachedFolders = null;
-    add(const LoadSummariesListEvent());
-    add(const LoadFoldersEvent());
   }
 
   void _onUpdateFolder(

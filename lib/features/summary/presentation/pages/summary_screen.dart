@@ -7,7 +7,6 @@ import '../bloc/summary_event.dart';
 import '../bloc/summary_state.dart';
 import '../../domain/entities/summary.dart';
 
-import '../../../../core/routes/app_router.dart';
 import '../widgets/summary_section_card.dart';
 import '../widgets/summary_content_sections.dart';
 import '../widgets/folder_picker_sheet.dart';
@@ -70,22 +69,23 @@ class _SummaryScreenState extends State<SummaryScreen> {
             ),
           );
           // Navigate back to summary_list_screen after successful save
-          // Reload summaries list when navigating
           Future.delayed(const Duration(milliseconds: 800), () {
             if (context.mounted) {
-              // Trigger reload of summaries list before navigation
-              context.read<SummaryBloc>().add(const LoadSummariesListEvent());
-              // Small delay to ensure the event is processed
-              Future.delayed(const Duration(milliseconds: 100), () {
-                if (context.mounted) {
-                  context.go(AppRoutes.transcriptList);
-                }
-              });
+              context.goNamed('transcriptList');
             }
           });
         }
       },
       child: BlocBuilder<SummaryBloc, SummaryState>(
+        buildWhen: (previous, current) {
+          return current is SummaryLoading ||
+              current is SummaryLoaded ||
+              current is SummaryError ||
+              current is RecordingSaved ||
+              current is SummarySaving ||
+              current is ExportingSummary ||
+              current is ExportSuccess;
+        },
         builder: (context, state) {
           if (state is RecordingSaved) {
             state = SummaryLoaded(state.summary);

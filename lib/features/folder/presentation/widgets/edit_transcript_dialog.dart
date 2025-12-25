@@ -38,7 +38,7 @@ class _EditTranscriptDialogState extends State<EditTranscriptDialog> {
       ),
       content: TextField(
         controller: _controller,
-        style: const TextStyle(color: Colors.white),
+        style: const TextStyle(color: Colors.black),
         cursorColor: Colors.white,
         decoration: const InputDecoration(
           hintText: 'Enter new name',

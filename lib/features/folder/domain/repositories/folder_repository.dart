@@ -16,3 +16,4 @@ abstract class FolderRepository {
   Future<Either<Failure, void>> deleteFolder(String folderId);
 }
 
+

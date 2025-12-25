@@ -18,7 +18,7 @@ class FolderPickerSheet extends StatelessWidget {
 
     if (!context.mounted) return;
 
-    await showModalBottomSheet(
+    final result = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: const Color(0xFF1C2128),
       shape: const RoundedRectangleBorder(
@@ -26,6 +26,16 @@ class FolderPickerSheet extends StatelessWidget {
       ),
       builder: (context) => FolderPickerSheet(recordingId: recordingId),
     );
+
+    if (result == 'CREATE_NEW_FOLDER' && context.mounted) {
+      final folderId = await context.push(AppRoutes.addFolder);
+      if (context.mounted && folderId is String) {
+        // Folder was created, auto-select it
+        context.read<SummaryBloc>().add(
+          FolderCreatedEvent(folderId: folderId, recordingId: recordingId),
+        );
+      }
+    }
   }
 
   @override
@@ -173,8 +183,7 @@ class FolderPickerSheet extends StatelessWidget {
                       style: const TextStyle(color: Color(0xFF3B82F6)),
                     ),
                     onTap: () {
-                      Navigator.pop(context);
-                      _navigateToAddFolder(context);
+                      Navigator.pop(context, 'CREATE_NEW_FOLDER');
                     },
                   ),
                 ],
@@ -211,9 +220,7 @@ class FolderPickerSheet extends StatelessWidget {
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context); // Close the folder picker modal first
-              // Navigate to add folder screen
-              _navigateToAddFolder(context);
+              Navigator.pop(context, 'CREATE_NEW_FOLDER');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF3B82F6),
@@ -227,15 +234,5 @@ class FolderPickerSheet extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Future<void> _navigateToAddFolder(BuildContext context) async {
-    final result = await context.push(AppRoutes.addFolder);
-    if (context.mounted && result is String) {
-      // Folder was created, auto-select it
-      context.read<SummaryBloc>().add(
-        FolderCreatedEvent(folderId: result, recordingId: recordingId),
-      );
-    }
   }
 }
