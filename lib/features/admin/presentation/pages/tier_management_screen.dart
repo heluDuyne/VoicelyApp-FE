@@ -21,7 +21,21 @@ class _TierManagementScreenState extends State<TierManagementScreen> {
   }
 
   void _showTierDialog({Tier? tier}) {
-    showDialog(context: context, builder: (context) => _TierDialog(tier: tier));
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1C2128),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder:
+          (context) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: _CreateTierSheet(tier: tier),
+          ),
+    );
   }
 
   void _onDelete(int tierId) {
@@ -169,15 +183,15 @@ class _TierManagementScreenState extends State<TierManagementScreen> {
   }
 }
 
-class _TierDialog extends StatefulWidget {
+class _CreateTierSheet extends StatefulWidget {
   final Tier? tier;
-  const _TierDialog({this.tier});
+  const _CreateTierSheet({this.tier});
 
   @override
-  State<_TierDialog> createState() => _TierDialogState();
+  State<_CreateTierSheet> createState() => _CreateTierSheetState();
 }
 
-class _TierDialogState extends State<_TierDialog> {
+class _CreateTierSheetState extends State<_CreateTierSheet> {
   final _formKey = GlobalKey<FormState>();
   late String _name;
   late double _price;
@@ -195,104 +209,184 @@ class _TierDialogState extends State<_TierDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF1F2937),
-      title: Text(
-        widget.tier == null ? 'Create Tier' : 'Edit Tier',
-        style: const TextStyle(color: Colors.white),
-      ),
-      content: SingleChildScrollView(
+    return SingleChildScrollView(
+      child: Container(
+        padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Title
+              Text(
+                widget.tier == null ? 'Create New Tier' : 'Edit Tier',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+
+              // Name Input
+              _buildLabel('Tier Name'),
               TextFormField(
                 initialValue: _name,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  labelStyle: TextStyle(color: Colors.grey),
-                ),
+                decoration: _buildInputDecoration('e.g. Premium Plan'),
                 validator:
                     (val) => val == null || val.isEmpty ? 'Required' : null,
                 onSaved: (val) => _name = val!,
               ),
+              const SizedBox(height: 20),
+
+              // Price Input
+              _buildLabel('Monthly Price (\$)'),
               TextFormField(
                 initialValue: _price.toString(),
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Monthly Price',
-                  labelStyle: TextStyle(color: Colors.grey),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
-                keyboardType: TextInputType.number,
+                decoration: _buildInputDecoration('0.00'),
                 validator:
                     (val) => val == null || val.isEmpty ? 'Required' : null,
                 onSaved: (val) => _price = double.parse(val!),
               ),
+              const SizedBox(height: 20),
+
+              // Storage Input
+              _buildLabel('Max Storage (MB)'),
               TextFormField(
                 initialValue: _storage.toString(),
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Max Storage (MB)',
-                  labelStyle: TextStyle(color: Colors.grey),
-                ),
                 keyboardType: TextInputType.number,
+                decoration: _buildInputDecoration('e.g. 1000'),
                 validator:
                     (val) => val == null || val.isEmpty ? 'Required' : null,
                 onSaved: (val) => _storage = int.parse(val!),
               ),
+              const SizedBox(height: 20),
+
+              // AI Minutes Input
+              _buildLabel('AI Minutes / Month'),
               TextFormField(
                 initialValue: _minutes.toString(),
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'AI Minutes/Month',
-                  labelStyle: TextStyle(color: Colors.grey),
-                ),
                 keyboardType: TextInputType.number,
+                decoration: _buildInputDecoration('e.g. 60'),
                 validator:
                     (val) => val == null || val.isEmpty ? 'Required' : null,
                 onSaved: (val) => _minutes = int.parse(val!),
               ),
+              const SizedBox(height: 32),
+
+              // Save Button
+              ElevatedButton(
+                onPressed: _onSubmit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3B82F6),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Save Tier',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+    );
+  }
+
+  void _onSubmit() {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+      if (widget.tier == null) {
+        context.read<AdminBloc>().add(
+          CreateTierEvent(
+            name: _name,
+            monthlyPrice: _price,
+            maxStorageMb: _storage,
+            maxAiMinutesMonthly: _minutes,
+          ),
+        );
+      } else {
+        context.read<AdminBloc>().add(
+          UpdateTierEvent(
+            tierId: widget.tier!.tierId,
+            name: _name,
+            monthlyPrice: _price,
+            maxStorageMb: _storage,
+            maxAiMinutesMonthly: _minutes,
+          ),
+        );
+      }
+      Navigator.pop(context);
+    }
+  }
+
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0, left: 4.0),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Colors.grey[400],
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
         ),
-        TextButton(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              _formKey.currentState!.save();
-              if (widget.tier == null) {
-                context.read<AdminBloc>().add(
-                  CreateTierEvent(
-                    name: _name,
-                    monthlyPrice: _price,
-                    maxStorageMb: _storage,
-                    maxAiMinutesMonthly: _minutes,
-                  ),
-                );
-              } else {
-                context.read<AdminBloc>().add(
-                  UpdateTierEvent(
-                    tierId: widget.tier!.tierId,
-                    name: _name,
-                    monthlyPrice: _price,
-                    maxStorageMb: _storage,
-                    maxAiMinutesMonthly: _minutes,
-                  ),
-                );
-              }
-              Navigator.pop(context);
-            }
-          },
-          child: const Text('Save', style: TextStyle(color: Colors.blue)),
-        ),
-      ],
+      ),
+    );
+  }
+
+  InputDecoration _buildInputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey[600]),
+      filled: true,
+      fillColor: const Color(0xFF282E39),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+      ),
     );
   }
 }

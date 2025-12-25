@@ -24,17 +24,20 @@ class TierModel extends Tier {
   factory TierModel.fromJson(Map<String, dynamic> json) {
     return TierModel(
       tierId: json['tier_id'] as int,
-      name: json['name'] as String,
-      maxStorageMb: (json['max_storage_mb'] as num).toDouble(),
-      maxAiMinutesPerMonth: (json['max_ai_minutes_per_month'] as num).toDouble(),
-      pricePerMonth: json['price_per_month'] != null
-          ? (json['price_per_month'] as num).toDouble()
-          : null,
+      name: json['name'] as String? ?? 'Unknown Tier',
+      maxStorageMb: (json['max_storage_mb'] as num?)?.toDouble() ?? 0.0,
+      maxAiMinutesPerMonth:
+          (json['max_ai_minutes_per_month'] as num?)?.toDouble() ?? 0.0,
+      pricePerMonth: (json['price_per_month'] as num?)?.toDouble(),
       isActive: json['is_active'] as bool? ?? true,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
-          : null,
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.parse(json['created_at'] as String)
+              : DateTime.now(),
+      updatedAt:
+          json['updated_at'] != null
+              ? DateTime.parse(json['updated_at'] as String)
+              : null,
     );
   }
 
@@ -64,4 +67,3 @@ class TierModel extends Tier {
     );
   }
 }
-

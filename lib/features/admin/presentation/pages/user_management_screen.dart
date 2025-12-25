@@ -5,7 +5,7 @@ import '../../../auth/domain/entities/user.dart';
 import '../../presentation/bloc/admin_bloc.dart';
 import '../../presentation/bloc/admin_event.dart';
 import '../../presentation/bloc/admin_state.dart';
-import '../widgets/edit_user_dialog.dart';
+import '../widgets/edit_user_sheet.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -34,9 +34,20 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _showUserEditDialog(User user) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => EditUserDialog(user: user),
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1C2128),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder:
+          (context) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: EditUserSheet(user: user),
+          ),
     );
   }
 
