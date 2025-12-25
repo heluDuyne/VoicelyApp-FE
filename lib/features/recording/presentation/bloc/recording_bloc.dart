@@ -6,6 +6,7 @@ import '../../domain/usecases/stop_recording.dart';
 import '../../domain/repositories/recording_repository.dart';
 import 'recording_event.dart';
 import 'recording_state.dart';
+import '../../domain/entities/recording.dart';
 
 class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
   final StartRecording startRecording;
@@ -23,6 +24,7 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
   }) : super(const RecordingInitial()) {
     on<StartRecordingRequested>(_onStartRecording);
     on<StopRecordingRequested>(_onStopRecording);
+    on<RecordingFinished>(_onRecordingFinished);
     on<PauseRecordingRequested>(_onPauseRecording);
     on<ResumeRecordingRequested>(_onResumeRecording);
     on<ImportAudioRequested>(_onImportAudio);
@@ -34,32 +36,44 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
     StartRecordingRequested event,
     Emitter<RecordingState> emit,
   ) async {
-    final result = await startRecording();
-
-    result.fold(
-      (failure) => emit(RecordingError(message: failure.message)),
-      (_) {
-        emit(const RecordingInProgress());
-        _durationSubscription?.cancel();
-        _durationSubscription = repository.durationStream.listen((duration) {
-          add(DurationUpdated(duration));
-        });
-      },
-    );
+    // UI controls the recorder now, just update state
+    emit(const RecordingInProgress());
+    _durationSubscription?.cancel();
+    // We don't listen to repo duration anymore, UI sends DurationUpdated
   }
 
   Future<void> _onStopRecording(
     StopRecordingRequested event,
     Emitter<RecordingState> emit,
   ) async {
+    // UI triggers this now via RecordingFinished, or this event is deprecated for internal logic
+    // But keeping it empty or redirecting just in case
+  }
+
+  Future<void> _onRecordingFinished(
+    RecordingFinished event,
+    Emitter<RecordingState> emit,
+  ) async {
     _durationSubscription?.cancel();
 
-    final result = await stopRecording();
+    final now = DateTime.now();
+    final title = 'Recording ${now.toString()}';
 
-    result.fold(
-      (failure) => emit(RecordingError(message: failure.message)),
-      (recording) => emit(RecordingCompleted(recording: recording)),
+    final recording = Recording(
+      recordingId: 'temp_id_${now.millisecondsSinceEpoch}',
+      userId: 'local_user',
+      title: title,
+      filePath: event.path,
+      durationSeconds: event.duration.inSeconds.toDouble(),
+      fileSizeMb: 0,
+      status: RecordingStatus.uploading,
+      sourceType: SourceType.recorded,
+      isPinned: false,
+      isTrashed: false,
+      createdAt: now,
     );
+
+    emit(RecordingCompleted(recording: recording));
   }
 
   Future<void> _onPauseRecording(
@@ -70,16 +84,15 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
 
     final result = await repository.pauseRecording();
 
-    result.fold(
-      (failure) => emit(RecordingError(message: failure.message)),
-      (_) {
-        if (state is RecordingInProgress) {
-          emit(RecordingPaused(
-            duration: (state as RecordingInProgress).duration,
-          ));
-        }
-      },
-    );
+    result.fold((failure) => emit(RecordingError(message: failure.message)), (
+      _,
+    ) {
+      if (state is RecordingInProgress) {
+        emit(
+          RecordingPaused(duration: (state as RecordingInProgress).duration),
+        );
+      }
+    });
   }
 
   Future<void> _onResumeRecording(
@@ -87,20 +100,21 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
     Emitter<RecordingState> emit,
   ) async {
     final currentDuration =
-        state is RecordingPaused ? (state as RecordingPaused).duration : Duration.zero;
+        state is RecordingPaused
+            ? (state as RecordingPaused).duration
+            : Duration.zero;
 
     final result = await repository.resumeRecording();
 
-    result.fold(
-      (failure) => emit(RecordingError(message: failure.message)),
-      (_) {
-        emit(RecordingInProgress(duration: currentDuration));
-        _durationSubscription?.cancel();
-        _durationSubscription = repository.durationStream.listen((duration) {
-          add(DurationUpdated(duration));
-        });
-      },
-    );
+    result.fold((failure) => emit(RecordingError(message: failure.message)), (
+      _,
+    ) {
+      emit(RecordingInProgress(duration: currentDuration));
+      _durationSubscription?.cancel();
+      _durationSubscription = repository.durationStream.listen((duration) {
+        add(DurationUpdated(duration));
+      });
+    });
   }
 
   Future<void> _onImportAudio(
@@ -115,10 +129,7 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
     );
   }
 
-  void _onDurationUpdated(
-    DurationUpdated event,
-    Emitter<RecordingState> emit,
-  ) {
+  void _onDurationUpdated(DurationUpdated event, Emitter<RecordingState> emit) {
     if (state is RecordingInProgress) {
       emit(RecordingInProgress(duration: event.duration));
     }
@@ -131,7 +142,7 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
     try {
       // Step 1: Creating recording metadata
       emit(const CreatingRecording());
-      
+
       final result = await repository.uploadAndTranscribeRecording(
         audioFile: event.audioFile,
         title: event.title,
@@ -140,25 +151,31 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
       );
 
       result.fold(
-        (failure) => emit(RecordingError(
-          message: failure.message,
-          step: 'Upload and transcribe',
-        )),
+        (failure) => emit(
+          RecordingError(
+            message: failure.message,
+            step: 'Upload and transcribe',
+          ),
+        ),
         (uploadResult) {
           // All steps completed successfully
-          emit(UploadComplete(
-            recordingId: uploadResult.recordingId,
-            transcriptId: uploadResult.transcriptId,
-            recording: uploadResult.recording,
-            segments: uploadResult.segments,
-          ));
+          emit(
+            UploadComplete(
+              recordingId: uploadResult.recordingId,
+              transcriptId: uploadResult.transcriptId,
+              recording: uploadResult.recording,
+              segments: uploadResult.segments,
+            ),
+          );
         },
       );
     } catch (e) {
-      emit(RecordingError(
-        message: 'Unexpected error: $e',
-        step: 'Upload and transcribe',
-      ));
+      emit(
+        RecordingError(
+          message: 'Unexpected error: $e',
+          step: 'Upload and transcribe',
+        ),
+      );
     }
   }
 
@@ -168,14 +185,3 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
     return super.close();
   }
 }
-
-
-
-
-
-
-
-
-
-
-

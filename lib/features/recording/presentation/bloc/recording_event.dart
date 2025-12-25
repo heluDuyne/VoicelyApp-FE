@@ -24,6 +24,16 @@ class ResumeRecordingRequested extends RecordingEvent {
   const ResumeRecordingRequested();
 }
 
+class RecordingFinished extends RecordingEvent {
+  final String path;
+  final Duration duration;
+
+  const RecordingFinished({required this.path, required this.duration});
+
+  @override
+  List<Object?> get props => [path, duration];
+}
+
 class ImportAudioRequested extends RecordingEvent {
   const ImportAudioRequested();
 }
@@ -53,14 +63,3 @@ class UploadAndTranscribeRecordingRequested extends RecordingEvent {
   @override
   List<Object?> get props => [audioFile, title, userId, folderId];
 }
-
-
-
-
-
-
-
-
-
-
-

@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
+import '../../features/recording/presentation/pages/confirmation_screen.dart';
+import '../../features/recording/presentation/pages/waiting_screen.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_screen.dart';
@@ -42,6 +45,8 @@ class AppRoutes {
   static const String adminUsers = '/admin/users';
   static const String adminTiers = '/admin/tiers';
   static const String adminAuditLogs = '/admin/audit-logs';
+  static const String confirmation = '/confirmation';
+  static const String waiting = '/waiting';
 }
 
 final GoRouter appRouter = GoRouter(
@@ -177,6 +182,24 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.adminAuditLogs,
       name: 'adminAuditLogs',
       builder: (context, state) => const AuditLogScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.confirmation,
+      name: 'confirmation',
+      builder: (context, state) {
+        final extras = state.extra as Map<String, dynamic>;
+        final file = extras['file'] as File;
+        return ConfirmationScreen(file: file);
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.waiting,
+      name: 'waiting',
+      builder: (context, state) {
+        final extras = state.extra as Map<String, dynamic>;
+        final file = extras['file'] as File;
+        return WaitingScreen(file: file);
+      },
     ),
   ],
   errorBuilder:

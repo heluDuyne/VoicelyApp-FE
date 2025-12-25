@@ -147,61 +147,7 @@ class _TranscriptionPageState extends State<TranscriptionPage> {
     }
   }
 
-  // Mock transcript data (fallback)
-  final List<TranscriptEntry> _mockTranscriptEntries = [
-    TranscriptEntry(
-      speakerId: 'jd',
-      speakerName: 'John Doe',
-      speakerInitials: 'JD',
-      speakerColor: const Color(0xFF9333EA), // Purple
-      timestamp: const Duration(seconds: 0),
-      text:
-          'Alright everyone, let\'s get started. The main goal for today is to finalize the UI for the new dashboard.',
-    ),
-    TranscriptEntry(
-      speakerId: 'sa',
-      speakerName: 'Sarah A.',
-      speakerInitials: 'SA',
-      speakerColor: const Color(0xFF10B981), // Green
-      timestamp: const Duration(seconds: 14),
-      text:
-          'I\'ve updated the mockups based on last week\'s feedback. I think the dark mode toggle is much smoother now.',
-    ),
-    TranscriptEntry(
-      speakerId: 's3',
-      speakerName: 'Speaker 3',
-      speakerInitials: 'S3',
-      speakerColor: Colors.grey,
-      timestamp: const Duration(seconds: 32),
-      text:
-          'Can we also look at the mobile responsiveness? I noticed some padding issues on the iPhone 15 layout.',
-    ),
-    TranscriptEntry(
-      speakerId: 'jd',
-      speakerName: 'John Doe',
-      speakerInitials: 'JD',
-      speakerColor: const Color(0xFF9333EA),
-      timestamp: const Duration(seconds: 45),
-      text:
-          'Good catch. Let\'s add that to the Jira ticket. Sarah, can you share your screen?',
-    ),
-    TranscriptEntry(
-      speakerId: 'sa',
-      speakerName: 'Sarah A.',
-      speakerInitials: 'SA',
-      speakerColor: const Color(0xFF10B981),
-      timestamp: const Duration(seconds: 52),
-      text: 'Sure, give me a second. Is everyone seeing the Figma file?',
-    ),
-    TranscriptEntry(
-      speakerId: 's4',
-      speakerName: 'Speaker 4',
-      speakerInitials: 'S4',
-      speakerColor: Colors.grey,
-      timestamp: const Duration(seconds: 65),
-      text: 'Yes, we can see it clearly now.',
-    ),
-  ];
+  // Mock data removed
 
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
@@ -315,61 +261,9 @@ class _TranscriptionPageState extends State<TranscriptionPage> {
     }
   }
 
-  Widget _buildWaveform() {
-    // TODO: Replace with actual waveform widget when package API is confirmed
-    // For now, return a placeholder that matches the original mock design
-    return Container(
-      height: 40,
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // Calculate available width for the Row
-          final availableWidth = constraints.maxWidth;
-
-          // Each bar: 3px width + 3px margin (1.5px on each side) = 6px per bar
-          const barWidth = 3.0;
-          const barMargin = 3.0; // 1.5px on each side
-          const barSpacing = barWidth + barMargin;
-
-          // Calculate how many bars can fit, ensuring at least 1
-          final maxBars =
-              availableWidth > barSpacing
-                  ? (availableWidth / barSpacing).floor()
-                  : 1;
-          final numBars = maxBars > 0 ? maxBars : 1;
-
-          return SizedBox(
-            width: availableWidth,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(numBars, (index) {
-                  final isActive =
-                      index <
-                      (numBars * 0.4)
-                          .round(); // Mock active waveform (40% of bars)
-                  return Container(
-                    width: barWidth,
-                    height: isActive ? 20 + (index % 5) * 4.0 : 8.0,
-                    margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                    decoration: BoxDecoration(
-                      color:
-                          isActive ? const Color(0xFF3B82F6) : Colors.grey[700],
-                      borderRadius: BorderRadius.circular(1.5),
-                    ),
-                  );
-                }),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
+  // Widget _buildWaveform() {
+  //   return const SizedBox(height: 40);
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -403,11 +297,8 @@ class _TranscriptionPageState extends State<TranscriptionPage> {
             );
           }
 
-          // Use real data if available, otherwise use mock
-          final entries =
-              _transcriptEntries.isNotEmpty
-                  ? _transcriptEntries
-                  : _mockTranscriptEntries;
+          // Use real data if available
+          final entries = _transcriptEntries;
 
           return Scaffold(
             backgroundColor: const Color(0xFF101822),
@@ -485,57 +376,57 @@ class _TranscriptionPageState extends State<TranscriptionPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Audio player
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Row(
-                      children: [
-                        // Play button
-                        GestureDetector(
-                          onTap: _onPlayPausePressed,
-                          child: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF3B82F6),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              _isPlaying ? Icons.pause : Icons.play_arrow,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Waveform
-                        Expanded(child: _buildWaveform()),
-                        const SizedBox(width: 12),
-                        // Timestamps
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              _formatDuration(_currentPosition),
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              _formatDuration(_totalDuration),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                  // // Audio player
+                  // Padding(
+                  //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  //   child: Row(
+                  //     children: [
+                  //       // Play button
+                  //       GestureDetector(
+                  //         onTap: _onPlayPausePressed,
+                  //         child: Container(
+                  //           width: 48,
+                  //           height: 48,
+                  //           decoration: BoxDecoration(
+                  //             color: const Color(0xFF3B82F6),
+                  //             shape: BoxShape.circle,
+                  //           ),
+                  //           child: Icon(
+                  //             _isPlaying ? Icons.pause : Icons.play_arrow,
+                  //             color: Colors.white,
+                  //             size: 28,
+                  //           ),
+                  //         ),
+                  //       ),
+                  //       const SizedBox(width: 12),
+                  //       // Waveform
+                  //       Expanded(child: _buildWaveform()),
+                  //       const SizedBox(width: 12),
+                  //       // Timestamps
+                  //       Column(
+                  //         crossAxisAlignment: CrossAxisAlignment.end,
+                  //         children: [
+                  //           Text(
+                  //             _formatDuration(_currentPosition),
+                  //             style: const TextStyle(
+                  //               fontSize: 14,
+                  //               fontWeight: FontWeight.w600,
+                  //               color: Colors.white,
+                  //             ),
+                  //           ),
+                  //           Text(
+                  //             _formatDuration(_totalDuration),
+                  //             style: TextStyle(
+                  //               fontSize: 12,
+                  //               color: Colors.grey[500],
+                  //             ),
+                  //           ),
+                  //         ],
+                  //       ),
+                  //     ],
+                  //   ),
+                  // ),
+                  // const SizedBox(height: 24),
                   // Transcript content
                   Expanded(
                     child: ListView.builder(

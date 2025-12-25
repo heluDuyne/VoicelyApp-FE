@@ -2,8 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-// TODO: Uncomment when waveform package API is confirmed
-// import 'package:flutter_audio_waveforms/flutter_audio_waveforms.dart';
+import 'package:audio_waveforms/audio_waveforms.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../injection_container/injection_container.dart' as di;
 import '../../../auth/data/datasources/auth_local_data_source.dart';
@@ -30,7 +29,7 @@ class RecordingPage extends StatelessWidget {
 
           // Get the audio file from the recording
           final audioFile = File(state.recording.filePath);
-          
+
           // Check if file exists
           if (!await audioFile.exists()) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -52,25 +51,10 @@ class RecordingPage extends StatelessWidget {
             ),
           );
         } else if (state is AudioImported) {
-          // Get user ID from auth
-          final authLocalDataSource = di.sl<AuthLocalDataSource>();
-          final user = await authLocalDataSource.getCachedUser();
-          final userId = user?.id ?? 'user_001'; // Fallback if no user
-
-          // Upload and transcribe the imported audio
-          final fileName = state.audioFile.path.split('/').last;
-          final title = fileName.replaceAll(
-            RegExp(r'\.[^.]+$'),
-            '',
-          ); // Remove extension
-
-          context.read<RecordingBloc>().add(
-            UploadAndTranscribeRecordingRequested(
-              audioFile: state.audioFile,
-              title: title,
-              userId: userId,
-            ),
-          );
+          // Navigate to confirmation screen
+          if (context.mounted) {
+            context.pushNamed('confirmation', extra: {'file': state.audioFile});
+          }
         } else if (state is RecordingTranscribed) {
           // Navigate to transcription page with transcriptId
           context.push(
@@ -104,7 +88,7 @@ class RecordingPage extends StatelessWidget {
           if (context.mounted) {
             // Small delay to ensure snackbar is visible before navigation
             await Future.delayed(const Duration(milliseconds: 500));
-            
+
             if (context.mounted) {
               context.push(
                 '${AppRoutes.transcription}?title=${Uri.encodeComponent(state.recording.title)}&recordingId=${state.recordingId}',
@@ -134,19 +118,21 @@ class _RecordingPageContent extends StatefulWidget {
   State<_RecordingPageContent> createState() => _RecordingPageContentState();
 }
 
-class _RecordingPageContentState extends State<_RecordingPageContent> {
-  // TODO: Initialize waveform controller when package API is confirmed
-  // RecorderController? _recorderController;
+class _RecordingPageContentState extends State<_RecordingPageContent>
+    with WidgetsBindingObserver {
+  late RecorderController _recorderController;
 
   @override
   void initState() {
     super.initState();
-    // _recorderController = RecorderController();
+    WidgetsBinding.instance.addObserver(this);
+    _recorderController = RecorderController();
   }
 
   @override
   void dispose() {
-    // _recorderController?.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _recorderController.dispose();
     super.dispose();
   }
 
@@ -154,16 +140,46 @@ class _RecordingPageContentState extends State<_RecordingPageContent> {
     context.read<RecordingBloc>().add(const ImportAudioRequested());
   }
 
-  void _onRecordPressed(BuildContext context, RecordingState state) {
+  Future<void> _onRecordPressed(
+    BuildContext context,
+    RecordingState state,
+  ) async {
     if (state is RecordingInProgress) {
-      // _recorderController?.stopRecorder();
-      context.read<RecordingBloc>().add(const StopRecordingRequested());
+      final path = await _recorderController.stop();
+      if (path != null) {
+        if (context.mounted) {
+          context.read<RecordingBloc>().add(
+            RecordingFinished(
+              path: path,
+              duration: _recorderController.elapsedDuration,
+            ),
+          );
+        }
+      }
     } else if (state is RecordingPaused) {
-      // _recorderController?.resumeRecording();
-      context.read<RecordingBloc>().add(const ResumeRecordingRequested());
+      await _recorderController.record();
+      if (context.mounted)
+        context.read<RecordingBloc>().add(const ResumeRecordingRequested());
     } else {
-      // _recorderController?.startRecorder();
-      context.read<RecordingBloc>().add(const StartRecordingRequested());
+      // Start recording
+      final hasPermission = await _recorderController.checkPermission();
+      if (hasPermission) {
+        await _recorderController.record();
+        if (context.mounted) {
+          context.read<RecordingBloc>().add(const StartRecordingRequested());
+
+          // Update duration manually
+          _recorderController.onCurrentDuration.listen((duration) {
+            context.read<RecordingBloc>().add(DurationUpdated(duration));
+          });
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Microphone permission required')),
+          );
+        }
+      }
     }
   }
 
@@ -292,31 +308,27 @@ class _RecordingPageContentState extends State<_RecordingPageContent> {
                             textAlign: TextAlign.center,
                           ),
                         // Waveform visualization
-                        // TODO: Uncomment when waveform package API is confirmed
-                        // if (isRecording || isPaused) ...[
-                        //   const SizedBox(height: 32),
-                        //   Container(
-                        //     height: 80,
-                        //     margin: const EdgeInsets.symmetric(horizontal: 24),
-                        //     child: RecorderWaveform(
-                        //       controller: _recorderController!,
-                        //       waveformType: WaveformType.long,
-                        //       waveformData: const [],
-                        //       decoration: BoxDecoration(
-                        //         color: const Color(0xFF282E39),
-                        //         borderRadius: BorderRadius.circular(12),
-                        //       ),
-                        //       padding: const EdgeInsets.all(12),
-                        //       waveStyle: WaveStyle(
-                        //         waveColor: isRecording
-                        //             ? const Color(0xFF3B82F6)
-                        //             : Colors.grey[600]!,
-                        //         extendWaveform: true,
-                        //         showMiddleLine: false,
-                        //       ),
-                        //     ),
-                        //   ),
-                        // ],
+                        if (isRecording || isPaused) ...[
+                          const SizedBox(height: 32),
+                          Container(
+                            height: 100,
+                            margin: const EdgeInsets.symmetric(horizontal: 24),
+                            child: AudioWaveforms(
+                              enableGesture: false,
+                              size: Size(
+                                MediaQuery.of(context).size.width - 48,
+                                100,
+                              ),
+                              recorderController: _recorderController,
+                              waveStyle: const WaveStyle(
+                                waveColor: Color(0xFF3B82F6),
+                                extendWaveform: true,
+                                showMiddleLine: false,
+                                spacing: 8.0,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     );
                   },

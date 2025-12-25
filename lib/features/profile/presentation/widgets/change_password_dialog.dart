@@ -18,7 +18,7 @@ class ChangePasswordDialog extends StatelessWidget {
       content: TextField(
         controller: passwordController,
         obscureText: true,
-        style: const TextStyle(color: Colors.white),
+        style: const TextStyle(color: Colors.black),
         decoration: const InputDecoration(
           hintText: 'New Password',
           hintStyle: TextStyle(color: Colors.grey),
